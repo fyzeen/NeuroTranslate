@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # initialize the model on the GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = LargerGCNConvNet().to(device)
+    model = GMMConvNet().to(device)
 
     # initialize optimizer / loss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     def train(epoch):
         model.train()
         
-        if epoch == 100: ###### THIS WAS INITIALLY 100 #######
+        if epoch == 5: ###### THIS WAS INITIALLY 100 #######
             for param_group in optimizer.param_groups:
                 param_group['lr'] = 0.005
 
@@ -122,10 +122,10 @@ if __name__ == "__main__":
         print(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
         write_to_file(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
 
-        torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", f"largerGCNCONV_recentEPOCH_ICA_d50_to_profumo_d50.pt")) 
+        torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", f"GMMCONV_recentEPOCH_ICA_d50_to_profumo_d50.pt")) 
 
         if epoch % 20 == 0:
-            torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", f"largerGCNCONV_EPOCH{epoch}_ICA_d50_to_profumo_d50.pt")) 
+            torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", f"GMMCONV_EPOCH{epoch}_ICA_d50_to_profumo_d50.pt")) 
         
     print("#############################")
     print("##### TRAINING COMPLETE #####")
@@ -140,4 +140,4 @@ if __name__ == "__main__":
     print(test_MAEs)
     print("#############################")
 
-    torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", "largerGCNCONV_FINAL_ICA_d50_to_profumo_d50.pt")) 
+    torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", "GMMCONV_FINAL_ICA_d50_to_profumo_d50.pt")) 

@@ -30,7 +30,8 @@ if __name__ == "__main__":
 
     # initialize the dataset
     dataset = TranslationsData(x_type="ICA", numFeatures_x=50,
-                               y_type="gradients", numFeatures_y=50)
+                               y_type="profumo", numFeatures_y=50)
+    
     
     # split the dataset into train and test sets
     train_size = int(0.9 * len(dataset))
@@ -38,12 +39,13 @@ if __name__ == "__main__":
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size]) 
 
     # load data
-    train_loader = DataLoader(train_dataset, batch_size=7, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+
 
     # initialize the model on the GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = GCNConvNet().to(device)
+    model = SplineConvNet().to(device)
 
     # initialize optimizer / loss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
@@ -52,7 +54,7 @@ if __name__ == "__main__":
     def train(epoch):
         model.train()
         
-        if epoch == 100:
+        if epoch == 5: ###### THIS WAS INITIALLY 100 #######
             for param_group in optimizer.param_groups:
                 param_group['lr'] = 0.005
 
@@ -90,6 +92,21 @@ if __name__ == "__main__":
         output = {'Predicted_values': y_hat, 'Measured_values': y, 'MAE': test_MAE}
         return output
     
+    def write_to_file(content):
+        with open('/home/ahmadf/batch/sbatch.print', 'a') as file:
+            file.write(str(content) + '\n')
+
+
+    # print subjects in train and test
+    print("### TRAIN SUBJECTS ###")
+    print([dataset.subj_list[i] for i in train_dataset.indices])
+    print("### TEST SUBJECTS ###")
+    print([dataset.subj_list[i] for i in test_dataset.indices])
+    write_to_file("### TRAIN SUBJECTS ###")
+    write_to_file([dataset.subj_list[i] for i in train_dataset.indices])
+    write_to_file("### TEST SUBJECTS ###")
+    write_to_file([dataset.subj_list[i] for i in test_dataset.indices])
+    
     train_losses = []
     train_MAEs = []
     test_MAEs = []
@@ -103,10 +120,13 @@ if __name__ == "__main__":
         test_MAEs.append(test_output['MAE'])
 
         print(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
+        write_to_file(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
+
+        torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", f"SPLINECONV_recentEPOCH_ICA_d50_to_profumo_d50.pt")) 
 
         if epoch % 20 == 0:
-            torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", f"EPOCH{epoch}_ICA_d50_to_profumo_d50.pt")) 
-
+            torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", f"SPLINECONV_EPOCH{epoch}_ICA_d50_to_profumo_d50.pt")) 
+        
     print("#############################")
     print("##### TRAINING COMPLETE #####")
     print("#############################")
@@ -120,4 +140,4 @@ if __name__ == "__main__":
     print(test_MAEs)
     print("#############################")
 
-    torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", "FINAL_ICA_d50_to_profumo_d50.pt")) 
+    torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/", "SPLINECONV_FINAL_ICA_d50_to_profumo_d50.pt")) 
