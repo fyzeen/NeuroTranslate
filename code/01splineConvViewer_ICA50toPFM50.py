@@ -31,14 +31,10 @@ subj_idx = 0
 data = dataset.get(subj_idx) # choose the subject that you want!
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = SplineConvNet().to(device)
-model.load_state_dict(torch.load("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/SPLINECONV_EPOCH29_ICA_d50_to_profumo_d50.pt", map_location=device))
-model.eval()
-
-with torch.no_grad():
-    pred = model(data.to(device)).to(device)
+model = ShallowSplineConvNet().to(device)
+pred, model = testingForwardPass(dataset, data, model, device, model_type="shallowSPLINECONV_EPOCH")
 
 out = pred.cpu().detach().numpy()
 
-np.save(f"/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/SPLINECONV_OUT_subj{subj_idx}.npy", out)
+np.save(f"/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/shallowSPLINECONV_OUT_subj{subj_idx}.npy", out)
 

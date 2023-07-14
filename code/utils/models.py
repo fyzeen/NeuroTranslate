@@ -111,6 +111,40 @@ class SplineConvNet(torch.nn.Module):
         
         return x
     
+class ShallowSplineConvNet(torch.nn.Module):
+    def __init__(self):
+        super(ShallowSplineConvNet, self).__init__()
+        
+        self.conv1 = SplineConv(50, 75, dim=3, kernel_size=25, norm=False).float()
+        self.bn1 = torch.nn.BatchNorm1d(75)
+        
+        self.conv2 = SplineConv(75, 100, dim=3, kernel_size=25, norm=False).float()
+        self.bn2 = torch.nn.BatchNorm1d(100)
+        
+        self.conv3 = SplineConv(100, 75, dim=3, kernel_size=25, norm=False).float()
+        self.bn3 = torch.nn.BatchNorm1d(75)
+        
+        self.conv4 = SplineConv(75, 50, dim=3, kernel_size=25, norm=False).float()
+                   
+    def forward(self, data):
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        
+        x = F.elu(self.conv1(x, edge_index, edge_attr)) 
+        x = self.bn1(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = F.elu(self.conv2(x, edge_index, edge_attr))
+        x = self.bn2(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = F.elu(self.conv3(x, edge_index, edge_attr))
+        x = self.bn3(x)
+        x = F.dropout(x, p=.10, training=self.training)
+        
+        x = self.conv4(x, edge_index, edge_attr)
+        
+        return x
+    
 class LargerGCNConvNet(torch.nn.Module):
     def __init__(self):
         super(LargerGCNConvNet, self).__init__()
@@ -380,6 +414,40 @@ class SmallestGCNConvNet(torch.nn.Module):
         x = self.conv12(x, edge_index)
         
         return x
+    
+class ShallowGCNConvNet(torch.nn.Module):
+    def __init__(self):
+        super(ShallowGCNConvNet, self).__init__()
+        
+        self.conv1 = GCNConv(-1, 500).float()
+        self.bn1 = torch.nn.BatchNorm1d(500)
+        
+        self.conv2 = GCNConv(500, 1000).float()
+        self.bn2 = torch.nn.BatchNorm1d(1000)
+        
+        self.conv3 = GCNConv(1000, 500).float()
+        self.bn3 = torch.nn.BatchNorm1d(500)
+        
+        self.conv4 = GCNConv(500, 50).float()
+            
+    def forward(self, data):
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        
+        x = F.elu(self.conv1(x, edge_index)) 
+        x = self.bn1(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = F.elu(self.conv2(x, edge_index))
+        x = self.bn2(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = F.elu(self.conv3(x, edge_index))
+        x = self.bn3(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = self.conv4(x, edge_index)
+
+        return x
 
 
 class GMMConvNet(torch.nn.Module):
@@ -469,6 +537,40 @@ class GMMConvNet(torch.nn.Module):
         x = F.dropout(x, p=.10, training=self.training)
 
         x = self.conv12(x, edge_index, edge_attr)
+        
+        return x
+
+class ShallowGMMConvNet(torch.nn.Module):
+    def __init__(self):
+        super(ShallowGMMConvNet, self).__init__()
+        
+        self.conv1 = GMMConv(50, 75, dim=3, kernel_size=15, norm=False).float()
+        self.bn1 = torch.nn.BatchNorm1d(75)
+        
+        self.conv2 = GMMConv(75, 100, dim=3, kernel_size=15, norm=False).float()
+        self.bn2 = torch.nn.BatchNorm1d(100)
+        
+        self.conv3 = GMMConv(100, 75, dim=3, kernel_size=15, norm=False).float()
+        self.bn3 = torch.nn.BatchNorm1d(75)
+        
+        self.conv4 = GMMConv(75, 50, dim=3, kernel_size=15, norm=False).float()
+            
+    def forward(self, data):
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        
+        x = F.elu(self.conv1(x, edge_index, edge_attr)) 
+        x = self.bn1(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = F.elu(self.conv2(x, edge_index, edge_attr))
+        x = self.bn2(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = F.elu(self.conv3(x, edge_index, edge_attr))
+        x = self.bn3(x)
+        x = F.dropout(x, p=.10, training=self.training)
+
+        x = self.conv4(x, edge_index, edge_attr)
         
         return x
     

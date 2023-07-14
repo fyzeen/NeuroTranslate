@@ -42,3 +42,31 @@ def plotHCPSurface(data, surf=hcp.mesh.inflated, bg_map=hcp.mesh.sulc, threshold
     '''
     plot = plotting.view_surf(surf, data, threshold=threshold, bg_map=bg_map)
     plot.open_in_browser()
+
+def listStateDictFiles(path, model_type):
+    '''
+    Helper function for testingForwardPass()
+    '''
+    for f in os.listdir(path):
+        if f.startswith(model_type):
+            yield f
+
+def testingForwardPass(dataset, data, model, device, model_type):
+    '''
+    This function pass your data through a the inputted model (whose stat_dict is loaded from a standardized location on Fyzeen's machine)
+    '''
+    x_type, numFeatures_x, y_type, numFeatures_y = dataset.x_type, dataset.numFeatures_x, dataset.y_type, dataset.numFeatures_y
+    if model_type == "shallowSPLINECONV_EPOCH" or model_type == "SPLINECONV_EPOCH":
+        rootpath = f"/home/ahmadf/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
+    else:
+        rootpath = f"/Users/fyzeen/FyzeenLocal/GitHub/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
+    file_list = sorted(list(listStateDictFiles(rootpath, model_type)))
+    state_dict_path = op.join(rootpath, file_list[-1])
+
+    model.load_state_dict(torch.load(state_dict_path, map_location=device))
+
+    model.eval()
+    with torch.no_grad():   
+        pred = model(data.to(device)).to(device)
+
+    return pred, model

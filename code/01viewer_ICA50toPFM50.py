@@ -33,17 +33,13 @@ data = dataset.get(0) # choose the subject that you want!
 
 device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 #device = torch.device('cpu') # USE IF model=SmallestGCNConvNet()
-model = GMMConvNet().to(device)
-model.load_state_dict(torch.load("/Users/fyzeen/FyzeenLocal/GitHub/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/GMMCONV_EPOCH6_ICA_d50_to_profumo_d50.pt", map_location=device))
-model.eval()
+model = ShallowGMMConvNet().to(device)
 
-with torch.no_grad():
-    pred = model(data.to(device)).to(device)
+pred, model = testingForwardPass(dataset, data, model, device, model_type="shallowGMMCONV_EPOCH")
 
+#plotHCPSurface(cortexToSurfaceVertices(data.x.cpu().numpy())[:, 0])
 
-plotHCPSurface(cortexToSurfaceVertices(data.x.cpu().numpy())[:, 10])
+#plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 0])
 
-plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 10])
-
-plotHCPSurface(cortexToSurfaceVertices(pred.cpu().detach().numpy())[:, 10])
+plotHCPSurface(cortexToSurfaceVertices(pred.cpu().detach().numpy())[:, 0])
 
