@@ -39,6 +39,6 @@ pred, model = testingForwardPass(dataset, data, model, device, model_type="GMMCO
 
 #plotHCPSurface(cortexToSurfaceVertices(data.x.cpu().numpy())[:, 0])
 
-plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 0])
+#plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 0])
 
-plotHCPSurface(cortexToSurfaceVertices(pred.cpu().detach().numpy())[:, 0])
+plotHCPSurface(cortexToSurfaceVertices(pred.cpu().detach().numpy())[:, 14])
