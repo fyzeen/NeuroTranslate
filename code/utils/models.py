@@ -25,7 +25,7 @@ class SplineConvNet(torch.nn.Module):
     def __init__(self):
         super(SplineConvNet, self).__init__()
         
-        self.conv1 = SplineConv(50, 55, dim=3, kernel_size=25, norm=False).float()
+        self.conv1 = SplineConv(-1, 55, dim=3, kernel_size=25, norm=False).float()
         self.bn1 = torch.nn.BatchNorm1d(55)
         
         self.conv2 = SplineConv(55, 60, dim=3, kernel_size=25, norm=False).float()
@@ -454,7 +454,7 @@ class GMMConvNet(torch.nn.Module):
     def __init__(self):
         super(GMMConvNet, self).__init__()
         
-        self.conv1 = GMMConv(50, 75, dim=3, kernel_size=15, norm=False).float()
+        self.conv1 = GMMConv(-1, 75, dim=3, kernel_size=15, norm=False).float()
         self.bn1 = torch.nn.BatchNorm1d(75)
         
         self.conv2 = GMMConv(75, 100, dim=3, kernel_size=15, norm=False).float()
