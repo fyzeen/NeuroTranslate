@@ -29,8 +29,8 @@ if __name__ == "__main__":
     torch.cuda.empty_cache()
 
     # initialize the dataset
-    dataset = TranslationsData(x_type="profumo", numFeatures_x=50,
-                               y_type="ICA", numFeatures_y=50)
+    dataset = TranslationsData(x_type="gradients", numFeatures_x=200,
+                               y_type="profumo", numFeatures_y=50)
     
     
     # split the dataset into train and test sets
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     
     # initialize the model on the GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = SplineConvNet().to(device)
+    model = GMMConvNet().to(device)
 
     # initialize optimizer / loss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         return output
     
     def write_to_file(content):
-        with open('/home/ahmadf/batch/sbatch.print2', 'a') as file:
+        with open('/home/ahmadf/batch/sbatch.print12', 'a') as file:
             file.write(str(content) + '\n')
 
 
@@ -122,10 +122,10 @@ if __name__ == "__main__":
         print(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
         write_to_file(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
 
-        torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/profumo_d50_to_ICA_d50/", f"SPLINECONV_recentEPOCH_profumo_d50_to_ICA_d50.pt")) 
+        torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/gradients_d200_to_ICA_d50/", f"GMMCONV_recentEPOCH_gradients_d200_to_ICA_d50.pt")) 
 
         if epoch % 20 == 0:
-            torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/profumo_d50_to_ICA_d50/", f"SPLINECONV_EPOCH{epoch}_profumo_d50_to_ICA_d50.pt")) 
+            torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/gradients_d200_to_ICA_d50/", f"GMMCONV_EPOCH{epoch}_gradients_d200_to_ICA_d50.pt")) 
         
     print("#############################")
     print("##### TRAINING COMPLETE #####")
@@ -140,4 +140,4 @@ if __name__ == "__main__":
     print(test_MAEs)
     print("#############################")
 
-    torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/profumo_d50_to_ICA_d50/", "SPLINECONV_FINAL_profumo_d50_to_ICA_d50.pt")) 
+    torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/gradients_d200_to_ICA_d50/", "GMMCONV_FINAL_gradients_d200_to_ICA_d50.pt")) 

@@ -36,5 +36,5 @@ pred, model = testingForwardPass(dataset, data, model, device, model_type="shall
 
 out = pred.cpu().detach().numpy()
 
-np.save(f"/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/shallowSPLINECONV_OUT_subj{subj_idx}.npy", out)
+np.save(f"/scratch/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/shallowSPLINECONV_OUT_subj{subj_idx}.npy", out)
 

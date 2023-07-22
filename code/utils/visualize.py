@@ -57,7 +57,7 @@ def testingForwardPass(dataset, data, model, device, model_type):
     '''
     x_type, numFeatures_x, y_type, numFeatures_y = dataset.x_type, dataset.numFeatures_x, dataset.y_type, dataset.numFeatures_y
     if model_type == "shallowSPLINECONV_EPOCH" or model_type == "SPLINECONV_EPOCH":
-        rootpath = f"/home/ahmadf/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
+        rootpath = f"/scratch/ahmadf/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
     else:
         rootpath = f"/Users/fyzeen/FyzeenLocal/GitHub/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
     file_list = sorted(list(listStateDictFiles(rootpath, model_type)))

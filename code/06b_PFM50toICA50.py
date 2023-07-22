@@ -93,7 +93,7 @@ if __name__ == "__main__":
         return output
     
     def write_to_file(content):
-        with open('/home/ahmadf/batch/sbatch.print', 'a') as file:
+        with open('/home/ahmadf/batch/sbatch.print3', 'a') as file:
             file.write(str(content) + '\n')
 
 

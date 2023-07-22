@@ -122,10 +122,10 @@ if __name__ == "__main__":
         print(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
         write_to_file(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
 
-        torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_gradients_d50/", f"largerGCNCONV_recentEPOCH_ICA_d50_to_gradients_d50.pt")) 
+        torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_gradients_d50/", f"largerGCNCONV_recentEPOCH_ICA_d50_to_gradients_d50.pt")) 
 
         if epoch % 20 == 0:
-            torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_gradients_d50/", f"largerGCNCONV_EPOCH{epoch}_ICA_d50_to_gradients_d50.pt")) 
+            torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_gradients_d50/", f"largerGCNCONV_EPOCH{epoch}_ICA_d50_to_gradients_d50.pt")) 
         
     print("#############################")
     print("##### TRAINING COMPLETE #####")
@@ -140,5 +140,5 @@ if __name__ == "__main__":
     print(test_MAEs)
     print("#############################")
 
-    torch.save(model.state_dict(), op.join("/home/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_gradients_d50/", "largerGCNCONV_FINAL_ICA_d50_to_gradients_d50.pt")) 
+    torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/ICA_d50_to_gradients_d50/", "largerGCNCONV_FINAL_ICA_d50_to_gradients_d50.pt")) 
     
