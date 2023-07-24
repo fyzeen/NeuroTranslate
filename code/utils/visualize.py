@@ -63,6 +63,8 @@ def testingForwardPass(dataset, data, model, device, model_type):
     file_list = sorted(list(listStateDictFiles(rootpath, model_type)))
     state_dict_path = op.join(rootpath, file_list[-1])
 
+    print(f"Loading from: {state_dict_path}")
+
     model.load_state_dict(torch.load(state_dict_path, map_location=device))
 
     model.eval()

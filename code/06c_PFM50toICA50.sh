@@ -12,7 +12,7 @@
 module load python
 source activate neurotranslate
 
-python3 /home/ahmadf/NeuroTranslate/code/06b_PFM50toICA50.py
+python3 /home/ahmadf/NeuroTranslate/code/06c_PFM50toICA50.py
 
 conda deactivate
 

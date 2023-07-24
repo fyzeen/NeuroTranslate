@@ -32,7 +32,7 @@ if __name__ == "__main__":
     dataset = TranslationsData(x_type="ICA", numFeatures_x=200,
                                y_type="gradients", numFeatures_y=50)
     
-    '''
+
     # split the dataset into train and test sets
     train_size = int(0.9 * len(dataset))
     test_size = len(dataset) - train_size
@@ -141,4 +141,3 @@ if __name__ == "__main__":
     print("#############################")
 
     torch.save(model.state_dict(), op.join("/scratch/ahmadf/NeuroTranslate/saved_models/ICA_d200_to_gradients_d50/", "largerGCNCONV_FINAL_ICA_d200_to_gradients_d50.pt")) 
-    '''
