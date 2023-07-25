@@ -2,7 +2,7 @@
 #SBATCH --job-name=MemTests
 #SBATCH --output=/home/ahmadf/batch/sbatch.out%j
 #SBATCH --error=/home/ahmadf/batch/sbatch.err%j
-#SBATCH --time=23:55:00
+#SBATCH --time=47:55:00
 #SBATCH --mem=32GB
 #SBATCH -N 1 #number nodes
 #SBATCH -n 1 #number tasks per node

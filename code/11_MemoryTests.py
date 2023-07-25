@@ -4,6 +4,7 @@ from utils.models import *
 
 import os
 import os.path as op
+import time
 
 import nibabel as nib
 import nilearn.plotting as plotting
@@ -105,12 +106,12 @@ if __name__ == "__main__":
         train_loader = DataLoader(train_dataset, batch_size=i, shuffle=True)
         test_loader = DataLoader(test_dataset, batch_size=i, shuffle=False)
 
-        for j, item in enumerate([LargerGCNConvNet(), ShallowGCNConvNet(), GMMConvNet(), SplineConvNet()]):
+        for j, item in enumerate([LargerGCNConvNet(), ShallowGCNConvNet(), GMMConvNet(), ShallowGMMConvNet(), SplineConvNet(), ShallowSplineConvNet()]):
             torch.cuda.empty_cache()
 
-            model_name_list = ["LargerGCNConvNet", "ShallowGCNConvNet"]
-            write_to_file(f"TESTING: {model_name_list[j]} with batch size {i}")
-            print(f"TESTING: {model_name_list[j]} with batch size {i}")
+            model_name_list = ["LargerGCNConvNet", "ShallowGCNConvNet", "GMMConvNet", "ShallowGMMConvNet", "SplineConvNet", "ShallowSplineConvNet"]
+            write_to_file(f"########## TESTING: {model_name_list[j]} with batch size {i} ##########")
+            print(f"########## TESTING: {model_name_list[j]} with batch size {i} ##########")
 
             # initialize the model on the GPU
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -126,6 +127,7 @@ if __name__ == "__main__":
 
             epoch = 1
             while epoch < 6:
+                start_time = time.time()
                 loss, MAE, max_memory_used, stop = train(model, optimizer)
                 if stop:
                     epoch = 6
@@ -138,16 +140,22 @@ if __name__ == "__main__":
                     test_MAEs.append(test_output['MAE'])
 
                     print(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
-                    print(f"MAX MEM USED: {max_memory_used / 1024**3:.2f} GB")
+                    print(f"MAX MEM USED: {max_memory_used / 1024**3:.4f} GB")
+                    print(f"Time for epoch {epoch}: {(time.time() - start_time) / 60:.4f} min")
                     write_to_file(f"EPOCH: {epoch}, Train_loss: {loss}, Train_MAE: {MAE}, Test_MAE: {test_output['MAE']}")
-                    write_to_file(f"MAX MEM USED: {max_memory_used / 1024**3:.2f} GB")
-
+                    write_to_file(f"MAX MEM USED: {max_memory_used / 1024**3:.4f} GB")
+                    write_to_file(f"Time for epoch {epoch}: {(time.time() - start_time) / 60:.4f} min")
                     epoch += 1
+
                 else: 
-                    write_to_file("FINISHED TRAINING")
-                    print("FINISHED TRAINING")
-                    write_to_file(f"MAX MEM USED: {max_memory_used / 1024**3:.2f} GB")
-                    print(f"MAX MEM USED: {max_memory_used / 1024**3:.2f} GB")
+                    write_to_file("########## FINISHED TRAINING ##########")
+                    print("########## FINISHED TRAINING ##########")
+                    write_to_file(f"MAX MEM USED: {max_memory_used / 1024**3:.4f} GB")
+                    print(f"MAX MEM USED: {max_memory_used / 1024**3:.4f} GB")
+                    write_to_file(f"Time for epoch {epoch}: {(time.time() - start_time) / 60:.4f} min")
+                    print(f"Time for epoch {epoch}: {(time.time() - start_time) / 60:.4f} min")
+                    write_to_file("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
                     del model
                     del optimizer
