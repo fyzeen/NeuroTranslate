@@ -36,12 +36,16 @@ def cortexToSurfaceVertices(array):
     out[32492 + hcp.vertex_info.grayr] = array[29696:]
     return out
 
-def plotHCPSurface(data, surf=hcp.mesh.inflated, bg_map=hcp.mesh.sulc, threshold=0):
+def plotHCPSurface(data, surf=hcp.mesh.inflated, bg_map=hcp.mesh.sulc, threshold=0, save_path=None):
     '''
     This function uses nilearn.plootting.view_surf to visualize a surface data on standard HCP surfaces
     '''
     plot = plotting.view_surf(surf, data, threshold=threshold, bg_map=bg_map)
     plot.open_in_browser()
+
+    if save_path is not None:
+        plot.save_as_html(save_path)
+
 
 def listStateDictFiles(path, model_type):
     '''

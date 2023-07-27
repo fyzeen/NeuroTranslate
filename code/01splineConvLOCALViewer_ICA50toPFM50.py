@@ -35,6 +35,6 @@ pred = np.load(f"/Users/fyzeen/FyzeenLocal/GitHub/NeuroTranslate/saved_models/IC
 
 #plotHCPSurface(cortexToSurfaceVertices(data.x.cpu().numpy())[:, 0])
 
-#plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 0])
+#plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 10])
 
-plotHCPSurface(cortexToSurfaceVertices(pred)[:, 0])
+plotHCPSurface(cortexToSurfaceVertices(pred)[:, 10])

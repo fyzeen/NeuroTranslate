@@ -454,7 +454,7 @@ class GMMConvNet(torch.nn.Module):
     def __init__(self):
         super(GMMConvNet, self).__init__()
         
-        self.conv1 = GMMConv(-1, 75, dim=3, kernel_size=15, norm=False).float()
+        self.conv1 = GMMConv(50, 75, dim=3, kernel_size=15, norm=False).float()
         self.bn1 = torch.nn.BatchNorm1d(75)
         
         self.conv2 = GMMConv(75, 100, dim=3, kernel_size=15, norm=False).float()

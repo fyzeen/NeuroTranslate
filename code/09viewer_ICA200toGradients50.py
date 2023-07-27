@@ -33,12 +33,12 @@ data = dataset.get(0) # choose the subject that you want!
 
 device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 #device = torch.device('cpu') # USE IF model=SmallestGCNConvNet()
-model = GMMConvNet().to(device)
-pred, model = testingForwardPass(dataset, data, model, device, model_type="GMMCONV_EPOCH")
+model = LargerGCNConvNet().to(device)
+pred, model = testingForwardPass(dataset, data, model, device, model_type="largerGCNCONV_EPOCH")
 
 
 #plotHCPSurface(cortexToSurfaceVertices(data.x.cpu().numpy())[:, 0])
 
-#plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 10])
+#plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 0])
 
-plotHCPSurface(cortexToSurfaceVertices(pred.cpu().detach().numpy())[:, 10])
+plotHCPSurface(cortexToSurfaceVertices(pred.cpu().detach().numpy())[:, 2])
