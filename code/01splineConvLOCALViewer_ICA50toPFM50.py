@@ -33,8 +33,8 @@ data = dataset.get(subj_idx) # choose the subject that you want!
 
 pred = np.load(f"/Users/fyzeen/FyzeenLocal/GitHub/NeuroTranslate/saved_models/ICA_d50_to_profumo_d50/shallowSPLINECONV_OUT_subj{subj_idx}.npy")
 
-#plotHCPSurface(cortexToSurfaceVertices(data.x.cpu().numpy())[:, 0])
+plotHCPSurface(cortexToSurfaceVertices(data.x.cpu().numpy())[:, 23])
 
-#plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 10])
+plotHCPSurface(cortexToSurfaceVertices(data.y.cpu().numpy())[:, 0])
 
-plotHCPSurface(cortexToSurfaceVertices(pred)[:, 10])
+#plotHCPSurface(cortexToSurfaceVertices(pred)[:, 10])
