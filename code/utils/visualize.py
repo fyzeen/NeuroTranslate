@@ -63,7 +63,8 @@ def testingForwardPass(dataset, data, model, device, model_type):
     if model_type == "shallowSPLINECONV_EPOCH" or model_type == "SPLINECONV_EPOCH":
         rootpath = f"/scratch/ahmadf/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
     else:
-        rootpath = f"/Users/fyzeen/FyzeenLocal/GitHub/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
+        #rootpath = f"/Users/fyzeen/FyzeenLocal/GitHub/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/"
+        rootpath = f"/scratch/ahmadf/NeuroTranslate/saved_models/{x_type}_d{numFeatures_x}_to_{y_type}_d{numFeatures_y}/" # THIS WAS USED FOR ICC COMPUTATIONS, COMMENT OUT FOR LOCAL VIZUALIZATION!
     file_list = sorted(list(listStateDictFiles(rootpath, model_type)))
     state_dict_path = op.join(rootpath, file_list[-1])
 

@@ -198,7 +198,11 @@ class TranslationsData(Dataset):
         return len(self.processed_file_names)
 
     def get(self, idx):
-        return torch.load(op.join(self.processed_dir, f"subj{self.subj_list[idx]}.pt"))
+        if idx<1003:
+            subj_id = self.subj_list[idx]
+        else:
+            subj_id = idx
+        return torch.load(op.join(self.processed_dir, f"subj{subj_id}.pt"))
     
 
 class LOCALTranslationsData(Dataset):
