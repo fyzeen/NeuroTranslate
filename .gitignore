@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__
+.vscode
+/SurfToSurf/code/_FyzeenTests
+.ipynb_checkpoints
+/SurfToSurf/data
+SPLINECONV_EPOCH*
+shallowSPLINECONV_EPOCH*
+/SurfToNetmat/LocalTransformerTests/old
+TrainOut
