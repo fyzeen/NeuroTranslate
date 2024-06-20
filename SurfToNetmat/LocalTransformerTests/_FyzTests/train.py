@@ -60,10 +60,10 @@ def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, res
 
 if __name__ == "__main__":
     # loads in np train data/labels
-    train_data_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/train_data.npy")
-    train_label_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/train_labels.npy")
+    train_data_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/1L_train_data.npy")
+    train_label_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/1L_train_labels_perm.npy")
 
-    write_fpath = "/home/ahmadf/batch/sbatch.printPERMLABELS_LargeConv"
+    write_fpath = "/home/ahmadf/batch/temp/sbatch.printFULLPERMLABELS_LargeConv"
 
     write_to_file("Loaded in data.", filepath=write_fpath)
 
@@ -224,9 +224,9 @@ if __name__ == "__main__":
         write_to_file(f"EPOCH 1-{epoch} TRAIN Losses:", filepath=write_fpath) 
         write_to_file(losses, filepath=write_fpath)
         
-        torch.save(model.state_dict(), f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/PERMLABELS_LargeConv_{epoch}.pt")
+        torch.save(model.state_dict(), f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/FullPERMLABELS_LargeConv_{epoch}.pt")
 
-        delete = f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/PERMLABELS_LargeConv_{epoch-2}.pt"
+        delete = f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/FullPERMLABELS_LargeConv_{epoch-2}.pt"
         if os.path.exists(delete):
             os.remove(delete)
 

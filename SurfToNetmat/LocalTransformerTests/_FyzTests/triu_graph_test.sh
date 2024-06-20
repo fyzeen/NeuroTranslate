@@ -11,6 +11,6 @@
 source activate neurotranslate
 echo Activated environment with name: $CONDA_DEFAULT_ENV
 
-python3 test.py
+python3 triu_graph_test.py
 
 conda activate # not specified means back to (base)

@@ -14,6 +14,7 @@ sys.path.append('../../')
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import pandas as pd
@@ -28,6 +29,8 @@ from einops import repeat
 from einops.layers.torch import Rearrange
 
 from vit_pytorch.vit import Transformer
+
+from utils import *
 
 
 
@@ -131,12 +134,12 @@ class TransformerDecoderBlock(nn.Module):
     
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None):
         # Masked Multi-Head Attention
-        tgt2, _ = self.masked_multihead_attn(tgt, tgt, tgt, attn_mask=tgt_mask)
+        tgt2, masked_attn_weights = self.masked_multihead_attn(tgt, tgt, tgt, attn_mask=tgt_mask)
         tgt = tgt + self.dropout1(tgt2)  # Residual connection
         tgt = self.norm1(tgt)
         
         # Cross-Multi-Head Attention
-        tgt2, _ = self.cross_multihead_attn(tgt, memory, memory)
+        tgt2, cross_attn_weights = self.cross_multihead_attn(tgt, memory, memory)
         tgt = tgt + self.dropout2(tgt2)  # Residual connection
         tgt = self.norm2(tgt)
         
@@ -145,9 +148,9 @@ class TransformerDecoderBlock(nn.Module):
         tgt = tgt + self.dropout3(tgt2)  # Residual connection
         tgt = self.norm3(tgt)
         
-        return tgt
+        return tgt, masked_attn_weights, cross_attn_weights
 
-class FullTransformer(nn.Module):
+class FullTransformer(nn.Module): # THIS MODEL CHEATS!
     def __init__(self, dim_model, encoder_depth, nhead, encoder_mlp_dim, decoder_input_dim, decoder_dim_feedforward, decoder_depth, dim_encoder_head, 
                  latent_length=512, num_channels=15, dropout=0.1, num_patches=320, vertices_per_patch=153):
         super(FullTransformer, self).__init__()
@@ -271,7 +274,7 @@ class ProjectionConvFullTransformer(nn.Module):
         tgt = self.positional_encoding(tgt)
 
         for layer in self.decoder_layers:
-            tgt = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
 
         tgt = tgt.view(b, -1)
         tgt = self.projection(tgt.unsqueeze(-1))
@@ -291,7 +294,7 @@ class ProjectionConvFullTransformer(nn.Module):
         encoder_out = self.encoder(src)
 
         for layer in self.decoder_layers:
-            tgt = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
         
         tgt = tgt.view(b, -1)
         tgt = self.projection(tgt.unsqueeze(-1))
@@ -338,11 +341,11 @@ class GraphTransformer(nn.Module):
         tgt = tgt.view(b, self.latent_length, self.dim_model)
 
         for layer in self.decoder_layers:
-            tgt = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
 
-        tgt = tgt.view(b, -1)
+        tgt = tgt.transpose(1, 2).reshape(b, -1)
         tgt = self.projection(tgt.unsqueeze(-1))
-        tgt = tgt.view(b, self.latent_length, self.dim_model)
+        tgt = tgt.view(b, self.latent_length, self.dim_model).transpose(2,1)
 
         return torch.tanh(tgt.squeeze()) 
 
@@ -355,10 +358,82 @@ class GraphTransformer(nn.Module):
         encoder_out = self.encoder(src)
 
         for layer in self.decoder_layers:
-            tgt = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
 
-        tgt = tgt.view(b, -1)
+        tgt = tgt.transpose(1, 2).reshape(b, -1)
         tgt = self.projection(tgt.unsqueeze(-1))
+        tgt = tgt.view(b, self.latent_length, self.dim_model).transpose(2,1)
+
+        return torch.tanh(tgt.squeeze())
+    
+
+class MaskedLinear(nn.Linear):
+    def __init__(self, *args, mask, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mask = mask
+
+    def forward(self, input):
+        return F.linear(input, self.weight*self.mask, self.bias)
+
+
+class TriuGraphTransformer(nn.Module):
+    def __init__(self, dim_model, encoder_depth, nhead, encoder_mlp_dim, decoder_input_dim, decoder_dim_feedforward, decoder_depth, dim_encoder_head, num_out_nodes=100,
+                 latent_length=512, num_channels=15, dropout=0.1, num_patches=320, vertices_per_patch=153):
+        super(TriuGraphTransformer, self).__init__()
+
+        self.dim_model = dim_model
+        self.input_dim = decoder_input_dim
+        self.latent_length = latent_length
+
+        self.encoder = EncoderSiT(dim=dim_model, 
+                                  depth=encoder_depth, 
+                                  heads=nhead, 
+                                  mlp_dim=encoder_mlp_dim,
+                                  dim_head=dim_encoder_head,
+                                  num_channels=num_channels,  
+                                  num_patches=num_patches, 
+                                  num_vertices=vertices_per_patch, 
+                                  dropout=dropout,
+                                  output_length=latent_length,
+                                  emb_dropout=0.1)
+        
+        self.decoder_layers = nn.ModuleList([TransformerDecoderBlock(input_dim=decoder_input_dim, d_model=dim_model, nhead=nhead, dim_feedforward=decoder_dim_feedforward) for _ in range(decoder_depth)])
+
+        self.projection = MaskedLinear(in_features=latent_length*dim_model, out_features=int((num_out_nodes * (num_out_nodes-1)) / 2), mask=create_mask(num_out_nodes=num_out_nodes, latent_length=latent_length, num_extra_start_tokens=1))
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def encode(self, src):
+        return self.encoder(src)
+    
+    def decode(self, tgt, encoder_out, tgt_mask):
+        b, _, _ = tgt.size()
+
         tgt = tgt.view(b, self.latent_length, self.dim_model)
+
+        for layer in self.decoder_layers:
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
+
+        tgt = tgt.transpose(1, 2).reshape(b, -1)
+        tgt = self.projection(tgt)
+
+        return torch.tanh(tgt.squeeze()) 
+
+
+    def forward(self, src, tgt, tgt_mask, dropout=0.1):
+        b, _, _ = tgt.size()
+
+        tgt = tgt.view(b, self.latent_length, self.dim_model)
+
+        encoder_out = self.encoder(src)
+
+        for layer in self.decoder_layers:
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
+
+        tgt = tgt.transpose(1, 2).reshape(b, -1)
+        tgt = self.projection(tgt)
 
         return torch.tanh(tgt.squeeze())

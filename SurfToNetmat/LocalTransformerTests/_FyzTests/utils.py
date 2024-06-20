@@ -41,7 +41,7 @@ def write_to_file(content, filepath="/home/ahmadf/batch/sbatch.print", also_prin
 def generate_subsequent_mask(size):
     """
     Generate a mask to ensure that each position in the sequence can only attend to
-    positions up to and including itself. This is a lower triangular matrix filled with ones.
+    positions up to and including itself. This is a upper triangular matrix filled with ones.
     
     :param size: int, the length of the sequence
     :return: tensor of shape (size, size), where element (i, j) is False if j <= i, and True otherwise (See attn_mask option here: https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html)
@@ -177,7 +177,7 @@ def greedy_decode_graph(model, source, latent_length, device, b=1):
     '''
     Greedy decode algorithm for a full encoder-decoder architecture (inference) WITH GRAPH architecture.
 
-    Implements initialization with torch.ones [batch_size, num_nodes, num_nodes] and sequentially generates by row
+    Implements initialization with torch.ones [batch_size, num_nodes, num_nodes] and sequentially generates by node
     '''
     encoder_output = model.encode(source)
     decoder_input = torch.ones(b, latent_length, latent_length).to(device)
@@ -194,9 +194,7 @@ def greedy_decode_graph(model, source, latent_length, device, b=1):
 
 def NEW_greedy_decode_graph(model, source, latent_length, device, b=1):
     '''
-    Greedy decode algorithm for a full encoder-decoder architecture (inference) WITH GRAPH architecture.
-
-    Implements initialization with torch.ones [batch_size, num_nodes, num_nodes] and sequentially generates upper and lower triangles by node
+    DO NOT USE!
     '''
     encoder_output = model.encode(source)
     decoder_input = torch.ones(b, latent_length, latent_length).to(device)
@@ -213,3 +211,52 @@ def NEW_greedy_decode_graph(model, source, latent_length, device, b=1):
         decoder_input[:, i+2:, i+1] = lower_triangle_col
 
     return decoder_input
+
+
+def increasing_steps(start, step_sizes):
+    current_value = start
+    for step in step_sizes:
+        yield current_value
+        current_value += step
+
+def create_mask(num_out_nodes, latent_length, num_extra_start_tokens):
+    rowidx = 0
+    colidx = num_extra_start_tokens * latent_length
+
+    len_out = (num_out_nodes * (num_out_nodes-1)) / 2
+    len_in = latent_length*latent_length
+
+    mask = torch.zeros(int(len_out), int(len_in))
+
+    counter = 1
+    for i in increasing_steps(0, range(2, num_out_nodes+1)):
+        
+        for j in increasing_steps(i, range(counter, num_out_nodes)):
+            mask[j, colidx:colidx+latent_length] = 1.0
+
+
+        colidx = colidx+latent_length
+        counter +=1
+    
+    return mask
+
+def triu_graph_greedy_decode(model, source, latent_length, device, b=1):
+    encoder_output = model.encode(source)
+    decoder_input = torch.ones(b, latent_length, latent_length).to(device)
+    decoder_mask = generate_subsequent_mask(model.latent_length).to(device)
+
+    counter = 1
+    for x, i in enumerate(increasing_steps(0, range(2, 100+1))):
+        indices = []
+        out = model.decode(encoder_out=encoder_output, tgt=decoder_input, tgt_mask=decoder_mask)
+
+        for j in increasing_steps(i, range(counter, 100)):
+            indices.append(int(j))
+
+        decoder_input[:, x+2, x+3:] = torch.tensor(out[indices])
+        decoder_input[:, x+3:, x+2] = torch.tensor(out[indices])
+        
+
+        counter +=1
+
+    return decoder_input, out

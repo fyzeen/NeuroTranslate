@@ -41,21 +41,11 @@ def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, res
     preds_ = []
 
     for i, data in enumerate(train_loader):
-        inputs, targets = data[0].to(device), data[1].to(device).squeeze()#.unsqueeze(0) # USE THIS unsqueeze(0) ONLY if batch size = 1
+        inputs, in_targets, targets = data[0].to(device), data[1].to(device), data[2].to(device).squeeze()#.unsqueeze(0) # USE THIS unsqueeze(0) ONLY if batch size = 1
         
-        pred = model(src=inputs, tgt=targets, tgt_mask=generate_subsequent_mask(model.latent_length).to(device))
+        pred = model(src=inputs, tgt=in_targets, tgt_mask=generate_subsequent_mask(model.latent_length).to(device))
 
-        lower_triangle_mask = torch.tril(torch.ones(model.latent_length, model.latent_length), diagonal=1).bool()
-        lower_triangle_mask = lower_triangle_mask.unsqueeze(0).expand(pred.shape[0], model.latent_length, model.latent_length)
-        loss = loss_fn(pred.masked_select(lower_triangle_mask), targets.masked_select(lower_triangle_mask))
-
-        #loss = loss_fn(pred, targets)
-
-        loss2func = torch.nn.L1Loss()
-        loss2 = loss2func(pred.masked_select(lower_triangle_mask), targets.masked_select(lower_triangle_mask))
-
-        #loss2 = loss2func(pred, targets)
-
+        loss = loss_fn(pred, targets)
 
         loss.backward()
 
@@ -65,7 +55,7 @@ def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, res
         targets_.append(targets.cpu().numpy())
         preds_.append(pred.cpu().detach().numpy())
 
-    return targets_, preds_, loss, loss2
+    return targets_, preds_, loss
 
 
 if __name__ == "__main__":
@@ -74,17 +64,17 @@ if __name__ == "__main__":
     train_label_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/train_labels.npy")
 
     # make netmat and add start node(s) -- you need to have an EVEN number of NODES so that model_dim can be even
-    train_label_np = make_nemat_allsubj(train_label_np, 100)
-    train_label_np = add_start_node(train_label_np)
-    train_label_np = add_start_node(train_label_np)
+    in_train_label_np = make_nemat_allsubj(train_label_np, 100)
+    in_train_label_np = add_start_node(in_train_label_np)
+    in_train_label_np = add_start_node(in_train_label_np)
 
     # read numpy files into torch dataset and dataloader
     batch_size = 32
-    train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
+    train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(in_train_label_np).float(), torch.from_numpy(train_label_np).float())
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=False, num_workers=10)
 
     # write to file
-    write_fpath = "/home/ahmadf/batch/sbatch.printLowerTriLossGraph_Model"
+    write_fpath = "/home/ahmadf/batch/sbatch.printTriuGraph_Model"
     write_to_file("Loaded in data.", filepath=write_fpath)
 
 
@@ -93,20 +83,21 @@ if __name__ == "__main__":
     device = "cpu"
 
 
-    # GraphTransformer
-    model = GraphTransformer(dim_model=102, 
-                             encoder_depth=6, 
-                             nhead=6, 
-                             encoder_mlp_dim=102,
-                             decoder_input_dim=102, 
-                             decoder_dim_feedforward=102,
-                             decoder_depth=6,
-                             dim_encoder_head=17, 
-                             latent_length=102,
-                             dropout=0.1)
+    # TriuGraphTransformer
+    model = TriuGraphTransformer(dim_model=102, 
+                                encoder_depth=6, 
+                                nhead=6, 
+                                encoder_mlp_dim=102,
+                                decoder_input_dim=102, 
+                                decoder_dim_feedforward=102,
+                                decoder_depth=6,
+                                dim_encoder_head=17, 
+                                num_out_nodes=100, 
+                                latent_length=102,
+                                dropout=0.1)
     
     # initialize optimizer / loss
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.000001, eps=1e-9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.00001, eps=1e-9)
     loss_fn = torch.nn.MSELoss()
 
     # reset params 
@@ -116,12 +107,12 @@ if __name__ == "__main__":
     losses = []
 
     for epoch in range(1, 601):
-        targets_, preds_, loss, loss2 = train(model, train_loader, loss_fn, device, model.input_dim, optimizer, epoch)
+        targets_, preds_, loss = train(model, train_loader, loss_fn, device, model.input_dim, optimizer, epoch)
         
         losses.append(float(loss.detach().numpy()))
 
-        #mae_epoch = np.mean(np.abs(np.concatenate(targets_) - np.concatenate(preds_)))
-        mae_epoch = float(loss2.detach().numpy())
+        mae_epoch = np.mean(np.abs(np.concatenate(targets_) - np.concatenate(preds_)))
+        mae_epoch = float(mae_epoch)
         maes.append(mae_epoch)
 
         write_to_file(f"##### EPOCH {epoch} #####", filepath=write_fpath)
@@ -132,11 +123,11 @@ if __name__ == "__main__":
         write_to_file(f"EPOCH 1-{epoch} TRAIN Losses:", filepath=write_fpath) 
         write_to_file(losses, filepath=write_fpath)
         
-        #torch.save(model.state_dict(), f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/LowerTriLossGraphModel_{epoch}.pt")
+        torch.save(model.state_dict(), f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/TriuGraphModel_{epoch}.pt")
 
-        #delete = f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/LowerTriLossGraphModel_{epoch-2}.pt"
-        #if os.path.exists(delete):
-        #    os.remove(delete)
+        delete = f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/TriuGraphModel_{epoch-2}.pt"
+        if os.path.exists(delete):
+            os.remove(delete)
 
         
     

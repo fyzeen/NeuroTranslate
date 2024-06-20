@@ -21,16 +21,16 @@ if __name__ == "__main__":
     test_data_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/1L_test_data.npy")
     test_label_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/1L_test_labels.npy")
 
-    train_data_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/1L_train_data_perm.npy")
+    train_data_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/1L_train_data.npy")
     train_label_np = np.load("/scratch/naranjorincon/surface-vision-transformers/data/ICAd15_schfd100/template/1L_train_labels_perm.npy")
 
     # Takes only first n train and test subjects L hemis
     #n=200
-    train_data_np = train_data_np[:5, :, :, :]
-    train_label_np = train_label_np[:5, :]
+    train_data_np = train_data_np[:50, :, :, :]
+    train_label_np = train_label_np[:50, :]
 
-    test_data_np = test_data_np[:5, :, :, :]
-    test_label_np = test_label_np[:5, :]
+    test_data_np = test_data_np[:50, :, :, :]
+    test_label_np = test_label_np[:50, :]
 
     train_ground_truth = np.zeros(train_label_np.shape)
     train_pred = np.zeros(train_label_np.shape)
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=False, num_workers=10)
 
-    write_fpath = "/home/ahmadf/batch/sbatch.printTestPERMLargeConv"
+    write_fpath = "/home/ahmadf/batch/sbatch.printTestFullPERMLargeConv"
     write_to_file("Loaded in data.", filepath=write_fpath)
 
     # initialize model on device
@@ -69,7 +69,7 @@ if __name__ == "__main__":
                                           latent_length=100,
                                           dropout=0.1)
 
-    model.load_state_dict(torch.load("/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/PERMLABELS_LargeConv_9.pt"))
+    model.load_state_dict(torch.load("/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/FullPERMLABELS_LargeConv_25.pt"))
     model.eval()
     model.to(device)
 
@@ -134,8 +134,6 @@ if __name__ == "__main__":
     np.save("/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainOut/train_pred.npy", train_pred)
     np.save("/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainOut/test_ground_truth.npy", test_ground_truth)
     np.save("/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainOut/test_pred.npy", test_pred)
-
-
 
 
 
