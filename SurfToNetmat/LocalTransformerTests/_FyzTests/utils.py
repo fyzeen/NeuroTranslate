@@ -240,11 +240,18 @@ def create_mask(num_out_nodes, latent_length, num_extra_start_tokens):
     
     return mask
 
-def triu_graph_greedy_decode(model, source, latent_length, device, b=1):
+def triu_graph_greedy_decode(model, source, latent_length, device, b=1, target=None):
     encoder_output = model.encode(source)
     decoder_input = torch.ones(b, latent_length, latent_length).to(device)
+    #decoder_input[:, :, :] = target.to(device)[:, :, :]
     decoder_mask = generate_subsequent_mask(model.latent_length).to(device)
 
+    for i in range(100):
+        out = model.decode(encoder_out=encoder_output, tgt=decoder_input, tgt_mask=decoder_mask)
+        decoder_input[:, 2:, 2:] = torch.tensor(make_netmat(out))
+
+
+    '''
     counter = 1
     for x, i in enumerate(increasing_steps(0, range(2, 100+1))):
         indices = []
@@ -258,5 +265,5 @@ def triu_graph_greedy_decode(model, source, latent_length, device, b=1):
         
 
         counter +=1
-
+    '''
     return decoder_input, out

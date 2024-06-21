@@ -106,7 +106,7 @@ if __name__ == "__main__":
     maes = []
     losses = []
 
-    for epoch in range(1, 601):
+    for epoch in range(1, 801):
         targets_, preds_, loss = train(model, train_loader, loss_fn, device, model.input_dim, optimizer, epoch)
         
         losses.append(float(loss.detach().numpy()))

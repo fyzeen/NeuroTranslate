@@ -27,11 +27,19 @@ if __name__ == "__main__":
 
     # Takes only first n train and test subjects L hemis
     #n=200
-    train_data_np = train_data_np[:5, :, :, :]
-    train_label_np = train_label_np[:5, :]
+    #train_data_np = train_data_np[:5, :, :, :]
+    #train_label_np = train_label_np[:5, :]
 
-    test_data_np = test_data_np[:5, :, :, :]
-    test_label_np = test_label_np[:5, :]
+    #test_data_np = test_data_np[:5, :, :, :]
+    #test_label_np = test_label_np[:5, :]
+
+    in_train_label_np = make_nemat_allsubj(train_label_np, 100)
+    in_train_label_np = add_start_node(in_train_label_np)
+    in_train_label_np = add_start_node(in_train_label_np)
+
+    in_test_label_np = make_nemat_allsubj(test_label_np, 100)
+    in_test_label_np = add_start_node(in_test_label_np)
+    in_test_label_np = add_start_node(in_test_label_np)
 
 
     # Creates out arrays
@@ -43,10 +51,10 @@ if __name__ == "__main__":
 
     # read numpy files into torch dataset and dataloader
     batch_size = 1
-    test_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data_np).float(), torch.from_numpy(test_label_np).float())
+    test_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data_np).float(), torch.from_numpy(test_label_np).float(), torch.from_numpy(in_test_label_np).float())
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size = batch_size, shuffle=False, num_workers=10)
 
-    train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
+    train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float(), torch.from_numpy(in_train_label_np).float())
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=False, num_workers=10)
 
     write_fpath = "/home/ahmadf/batch/temp/sbatch.printTestTriuGraphDecoder"
@@ -69,7 +77,7 @@ if __name__ == "__main__":
                                 latent_length=102,
                                 dropout=0.1)
 
-    model.load_state_dict(torch.load("/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/TriuGraphModel_61.pt"))
+    model.load_state_dict(torch.load("/home/ahmadf/NeuroTranslate/code/SurfToNetmat/TransformerTest/_FyzTests/TrainedModels/TriuGraphModel_800.pt"))
     model.eval()
     model.to(device)
 
@@ -95,17 +103,17 @@ if __name__ == "__main__":
 
     with torch.no_grad():
         for i, data in enumerate(train_loader):
-            inputs, targets = data[0].to(device), data[1].to(device).squeeze().unsqueeze(0) #only use unsqueeze(0) if batch size is 1
+            inputs, targets, in_targets = data[0].to(device), data[1].to(device).squeeze().unsqueeze(0), data[2].to(device).squeeze().unsqueeze(0) #only use unsqueeze(0) if batch size is 1
 
-            decoder_pred, out = triu_graph_greedy_decode(model=model, source=inputs, latent_length=model.input_dim, device=device, b=batch_size)
+            decoder_pred, out = triu_graph_greedy_decode(model=model, source=inputs, latent_length=model.input_dim, device=device, b=1, target=in_targets)
 
             #write_to_file(targets.squeeze(), write_fpath)
             #write_to_file(decoder_pred.squeeze(), write_fpath)
 
 
             train_ground_truth[i, :] = targets.squeeze().numpy()
-            train_pred[i, :] = decoder_pred.squeeze().detach().numpy()[2:, 2:][np.triu_indices(100, k=1)]
-            #train_pred[i, :] = out.detach().numpy()
+            #train_pred[i, :] = decoder_pred.squeeze().detach().numpy()[2:, 2:][np.triu_indices(100, k=1)]
+            train_pred[i, :] = out.detach().numpy()
 
             train_targets.append(targets)
             train_preds_decoder.append(decoder_pred)
@@ -119,13 +127,13 @@ if __name__ == "__main__":
         
 
         for i, data in enumerate(test_loader):
-            inputs, targets = data[0].to(device), data[1].to(device).squeeze().unsqueeze(0) #only use unsqueeze(0) if batch size is 1
+            inputs, targets, in_targets = data[0].to(device), data[1].to(device).squeeze().unsqueeze(0), data[2].to(device).squeeze().unsqueeze(0) #only use unsqueeze(0) if batch size is 1
 
-            decoder_pred, out = triu_graph_greedy_decode(model=model, source=inputs, latent_length=model.input_dim, device=device, b=batch_size)
+            decoder_pred, out = triu_graph_greedy_decode(model=model, source=inputs, latent_length=model.input_dim, device=device, b=1, target=in_targets)
 
             test_ground_truth[i, :] = targets.squeeze().numpy()
-            test_pred[i, :] = decoder_pred.squeeze().detach().numpy()[2:, 2:][np.triu_indices(100, k=1)]
-            #test_pred[i, :] = out.detach().numpy()
+            #test_pred[i, :] = decoder_pred.squeeze().detach().numpy()[2:, 2:][np.triu_indices(100, k=1)]
+            test_pred[i, :] = out.detach().numpy()
 
             test_targets.append(targets)
             test_preds_decoder.append(decoder_pred)
