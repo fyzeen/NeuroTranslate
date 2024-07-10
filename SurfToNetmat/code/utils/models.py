@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from vit_pytorch.vit import Transformer
 from einops.layers.torch import Rearrange
 
-from utils import *
+from utils.utils import *
 
 class EncoderSiT(nn.Module):
     def __init__(self, *,
@@ -277,12 +277,13 @@ class MaskedLinear(nn.Linear):
 
 class TriuGraphTransformer(nn.Module):
     def __init__(self, dim_model, encoder_depth, nhead, encoder_mlp_dim, decoder_input_dim, decoder_dim_feedforward, decoder_depth, dim_encoder_head, num_out_nodes=100,
-                 latent_length=512, num_channels=15, dropout=0.1, num_patches=320, vertices_per_patch=153):
+                 latent_length=512, num_channels=15, dropout=0.1, num_patches=320, vertices_per_patch=153, extra_start_tokens=1):
         super(TriuGraphTransformer, self).__init__()
 
         self.dim_model = dim_model
         self.input_dim = decoder_input_dim
         self.latent_length = latent_length
+        self.extra_start_tokens = extra_start_tokens
 
         self.encoder = EncoderSiT(dim=dim_model, 
                                   depth=encoder_depth, 
@@ -298,7 +299,7 @@ class TriuGraphTransformer(nn.Module):
         
         self.decoder_layers = nn.ModuleList([TransformerDecoderBlock(input_dim=decoder_input_dim, d_model=dim_model, nhead=nhead, dim_feedforward=decoder_dim_feedforward) for _ in range(decoder_depth)])
 
-        self.projection = MaskedLinear(in_features=latent_length*dim_model, out_features=int((num_out_nodes * (num_out_nodes-1)) / 2), mask=create_mask(num_out_nodes=num_out_nodes, latent_length=latent_length, num_extra_start_tokens=1))
+        self.projection = MaskedLinear(in_features=latent_length*dim_model, out_features=int((num_out_nodes * (num_out_nodes-1)) / 2), mask=create_mask(num_out_nodes=num_out_nodes, latent_length=latent_length, num_extra_start_tokens=extra_start_tokens))
 
     def _reset_parameters(self):
         for p in self.parameters():

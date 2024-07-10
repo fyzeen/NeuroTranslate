@@ -39,9 +39,9 @@ def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, res
 
 
 if __name__ == "__main__":
-    translation = "ICAd15_schfd100"
+    translation = "ICAd15_schfd200"
     model_type = "TriuGraphTransformer"
-    out_nodes = 100
+    out_nodes = 200
 
     # loads in np train data/labels
     train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_data.npy")
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # make netmat and add start node(s) -- you need a non-prime number of nodes so each attention head can be the same size.
     in_train_label_np = make_nemat_allsubj(train_label_np, out_nodes)
     
-    num_start_nodes = 2
+    num_start_nodes = 3
     for i in range(num_start_nodes):
         in_train_label_np = add_start_node(in_train_label_np)
 
@@ -70,19 +70,20 @@ if __name__ == "__main__":
 
 
     # TriuGraphTransformer
-    model = TriuGraphTransformer(dim_model=102, 
+    model = TriuGraphTransformer(dim_model=203, 
                                  encoder_depth=6, 
-                                 nhead=6, 
-                                 encoder_mlp_dim=102,
-                                 decoder_input_dim=102, 
-                                 decoder_dim_feedforward=102,
+                                 nhead=7, 
+                                 encoder_mlp_dim=203,
+                                 decoder_input_dim=203, 
+                                 decoder_dim_feedforward=203,
                                  decoder_depth=6,
-                                 dim_encoder_head=17, 
+                                 dim_encoder_head=29, 
                                  num_out_nodes=out_nodes, 
-                                 latent_length=102,
+                                 latent_length=203,
                                  num_channels=15,
                                  num_patches=320,
                                  vertices_per_patch=153,
+                                 extra_start_tokens=2,
                                  dropout=0.1)
     
     # initialize optimizer / loss

@@ -17,9 +17,9 @@ import torch.nn.functional as F
 if __name__ == "__main__":
     torch.multiprocessing.set_sharing_strategy('file_system')
 
-    translation = "ICAd15_schfd100"
+    translation = "ICAd15_schfd200"
     model_type = "TriuGraphTransformer"
-    out_nodes = 100
+    out_nodes = 200
 
     # loads in np train/test data/labels
     test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_data.npy")
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     in_train_label_np = make_nemat_allsubj(train_label_np, out_nodes)
 
-    num_start_nodes = 2
+    num_start_nodes = 3
     for i in range(num_start_nodes):
         in_train_label_np = add_start_node(in_train_label_np)
 
@@ -72,19 +72,20 @@ if __name__ == "__main__":
     device = "cpu"
 
     # TriuGraphTransformer
-    model = TriuGraphTransformer(dim_model=102, 
+    model = TriuGraphTransformer(dim_model=203, 
                                  encoder_depth=6, 
-                                 nhead=6, 
-                                 encoder_mlp_dim=102,
-                                 decoder_input_dim=102, 
-                                 decoder_dim_feedforward=102,
+                                 nhead=7, 
+                                 encoder_mlp_dim=203,
+                                 decoder_input_dim=203, 
+                                 decoder_dim_feedforward=203,
                                  decoder_depth=6,
-                                 dim_encoder_head=17, 
+                                 dim_encoder_head=29, 
                                  num_out_nodes=out_nodes, 
-                                 latent_length=102,
+                                 latent_length=203,
                                  num_channels=15,
                                  num_patches=320,
                                  vertices_per_patch=153,
+                                 extra_start_tokens=2,
                                  dropout=0.1)
 
     model.load_state_dict(torch.load(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/TransformerTest/saved_models/{translation}/{model_type}_800.pt"))
