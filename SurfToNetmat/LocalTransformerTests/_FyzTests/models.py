@@ -437,3 +437,72 @@ class TriuGraphTransformer(nn.Module):
         tgt = self.projection(tgt)
 
         return torch.tanh(tgt.squeeze())
+    
+
+# From Samuel below:
+class SiT_nopool_linout(nn.Module):
+    def __init__(self, *,
+                        dim, 
+                        depth,
+                        heads,
+                        mlp_dim,
+                        num_patches = 320,
+                        num_classes= 4950,
+                        num_channels = 15,
+                        num_vertices = 153,
+                        dim_head = 64,
+                        dropout = 0.3,
+                        emb_dropout = 0.1
+                        ):
+
+        super().__init__()
+
+        # features of maps only add to number of patches, but dim of each patch stays at 4*153
+        patch_dim = num_channels * num_vertices # flattened patch
+
+        # linear embedding of the vectorized patches
+        # inputs has size = b * c * n * v, I think this changes depending on input featues for meshes, so 
+        # size = b * c * f * n * v where b = batch c = channels f = features, n=patches?, v=verteces?
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange('b c n v  -> b n (v c)'),
+            nn.Linear(patch_dim, dim),
+        ) # linear layer embeds the inputdim*153 -> attention dim
+
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim)) # plus one for regressino token according to paper
+        # good guide I used to walkthrough: https://medium.com/@brianpulfer/vision-transformers-from-scratch-pytorch-a-step-by-step-guide-96c3313c2e0c
+        self.dropout = nn.Dropout(emb_dropout)
+
+        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout) # torch transformer
+
+        decomp_attnpatch = num_patches * dim # size of decomposed patch and their attention vector
+
+        self.rearrange = Rearrange('b n d  -> b (n d)') # decomp them here, which will be the size of decomp_attnpatch
+
+        self.linear = nn.Linear(decomp_attnpatch,num_classes) # linear project from batch x 122k -> batch 4950
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, img):
+        #write_to_file('Looking into vectorized brain maps shape: {}'.format(img.size())) # should have size batch, chan, sphere(s) count, patches, verteces  
+        x = self.to_patch_embedding(img)
+        _, n, _ = x.shape # look above at to_patch_embedding see that it 'b c n v  -> b n (v c)' 256x320x384 if training at least
+        #write_to_file('Performed Patch embedding, and has shape:{}'.format(x.shape))
+
+        x += self.pos_embedding[:,:(n)] # spatial relationship across patches based on pos embedding of tokens
+        #write_to_file('Performed pos emb, now has shape: {}'.format(x.shape))
+        
+        x = self.dropout(x)
+        #write_to_file('Dropout used, now has shape: {}'.format(x.shape))
+        
+        x = self.transformer(x) # give embedded input to transformer architecture
+        #write_to_file('Passed through transformer architecture, now has shape: {}'.format(x.shape))
+
+        x = latent = self.rearrange(x)
+
+        x = self.linear(x)
+        #write_to_file('Collapsed patchesxattndim, now projected linearly to num_classes - has shape: {}'.format(x.shape))
+        
+        return x, latent

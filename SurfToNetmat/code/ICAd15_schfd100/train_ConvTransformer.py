@@ -109,9 +109,10 @@ if __name__ == "__main__":
         
         torch.save(model.state_dict(), f"/home/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_{epoch}.pt")
 
-        delete = f"/home/ahmadf/NeuroTranslate/SurfToNetmat/TransformerTest/saved_models/{translation}/{model_type}_{epoch-2}.pt"
-        if os.path.exists(delete):
-            os.remove(delete)
+        if epoch%10 != 0:
+            delete = f"/home/ahmadf/NeuroTranslate/SurfToNetmat/TransformerTest/saved_models/{translation}/{model_type}_{epoch}.pt"
+            if os.path.exists(delete):
+                os.remove(delete)
 
         
     

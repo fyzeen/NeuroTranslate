@@ -86,3 +86,31 @@ def get_lower_tris(mat):
         tril = mat[i, :, :][np.tril_indices_from(mat[i, :, :], k=-1)]
         trils.append(tril)
     return np.array(trils)
+
+def plot_traintest_losses(train_losses, test_losses, loss="MSE"):
+    """
+    Plots the MSE losses from training and test set.
+
+    Parameters:
+    - train_losses: List of MSE values computed each epoch.
+    - test_losses: List of MSE values computed every ten epochs.
+    """
+
+    # Generate epoch numbers for the training and test losses
+    epochs = list(range(1, len(train_losses) + 1))
+    test_epochs = [10 * i for i in range(1, len(test_losses) + 1)]
+
+    # Plot the training losses
+    plt.figure(figsize=(6, 4))
+    plt.plot(epochs, train_losses, label=f'Train {loss}', marker=".")
+
+    # Plot the test losses
+    plt.plot(test_epochs, test_losses, label=f'Test {loss} (every 10 epochs)', color='red', marker='x')
+
+    # Add labels and title
+    plt.xlabel('Epochs')
+    plt.ylabel(f'{loss}')
+    plt.title(f'Training and Test {loss} Losses')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
