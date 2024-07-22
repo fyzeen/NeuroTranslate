@@ -15,7 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, reset_params=True):
+def train(model, train_loader, device, input_dim, optimizer, epoch, reset_params=True):
     model.train()
 
     targets_ = []
@@ -24,9 +24,12 @@ def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, res
     for i, data in enumerate(train_loader):
         inputs, targets = data[0].to(device), data[1].to(device).squeeze() #.unsqueeze(0) # USE THIS unsqueeze(0) ONLY if batch size = 1
         
-        pred, _ = model(src=inputs, tgt=targets, tgt_mask=generate_subsequent_mask(model.latent_length).to(device))
+        pred, mu, log_var = model(src=inputs, tgt=targets, tgt_mask=generate_subsequent_mask(model.latent_length).to(device))
 
-        loss = loss_fn(pred, targets)
+        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
+        recon_loss = torch.nn.MSELoss()(pred, targets)
+
+        loss = kld_loss + recon_loss
 
         loss.backward()
 
@@ -76,7 +79,7 @@ def test(model, train_loader_fortesting, test_loader, device):
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "ConvTransformer_Fisher"
+    model_type = "VariationalConvTransformer_Fisher"
     out_nodes = 100
     fisherZtransform = True
 
@@ -106,7 +109,7 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size = test_batch_size, shuffle=False, num_workers=10)
 
     train_dataset_fortesting = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
-    train_loader_fortesting = torch.utils.data.DataLoader(train_dataset, batch_size = test_batch_size, shuffle=False, num_workers=10)
+    train_loader_fortesting = torch.utils.data.DataLoader(train_dataset_fortesting, batch_size = test_batch_size, shuffle=False, num_workers=10)
 
     write_fpath = f"/home/ahmadf/batch/sbatch.print{model_type}_{translation}"
     write_to_file("Loaded in data.", filepath=write_fpath)
@@ -117,7 +120,7 @@ if __name__ == "__main__":
 
 
     # ConvTransformer
-    model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+    model = VariationalConvTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
                                           encoder_depth=6,
                                           nhead=6,
                                           encoder_mlp_dim=36, 
@@ -125,6 +128,7 @@ if __name__ == "__main__":
                                           decoder_dim_feedforward=36,
                                           decoder_depth=6,
                                           dim_encoder_head=16,
+                                          VAE_latent_dim=500,
                                           latent_length=100,
                                           num_channels=15,
                                           num_patches=320, 
@@ -134,7 +138,6 @@ if __name__ == "__main__":
 
     # initialize optimizer / loss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, eps=1e-9)
-    loss_fn = torch.nn.MSELoss()
 
     # reset params 
     model._reset_parameters()
@@ -148,7 +151,7 @@ if __name__ == "__main__":
     test_maes = []
 
     for epoch in range(0, 601):
-        targets_, preds_, loss = train(model, train_loader, loss_fn, device, model.input_dim, optimizer, epoch)
+        targets_, preds_, loss = train(model, train_loader, device, model.input_dim, optimizer, epoch)
         
         losses.append(float(loss.detach().numpy()))
 
@@ -163,7 +166,7 @@ if __name__ == "__main__":
         write_to_file(f"EPOCH 1-{epoch} TRAIN Losses:", filepath=write_fpath) 
         write_to_file(losses, filepath=write_fpath)
         
-        #torch.save(model.state_dict(), f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_{epoch}.pt")
+        torch.save(model.state_dict(), f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_{epoch}.pt")
 
         if epoch%10 == 0:
             train_mse, train_mae, test_mse, test_mae = test(model, train_loader_fortesting, test_loader, device)

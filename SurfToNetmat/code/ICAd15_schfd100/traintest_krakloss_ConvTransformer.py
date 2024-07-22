@@ -14,8 +14,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from krakloss import * 
 
-def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, reset_params=True):
+
+def train(model, train_loader, device, input_dim, optimizer, epoch, reset_params=True):
     model.train()
 
     targets_ = []
@@ -24,9 +26,26 @@ def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, res
     for i, data in enumerate(train_loader):
         inputs, targets = data[0].to(device), data[1].to(device).squeeze() #.unsqueeze(0) # USE THIS unsqueeze(0) ONLY if batch size = 1
         
-        pred, _ = model(src=inputs, tgt=targets, tgt_mask=generate_subsequent_mask(model.latent_length).to(device))
+        pred, latent = model(src=inputs, tgt=targets, tgt_mask=generate_subsequent_mask(model.latent_length).to(device))
 
-        loss = loss_fn(pred, targets)
+        # reshaping latent
+        batch_size, sequence_length, model_dim = latent.size()
+        latent = latent.view(batch_size, sequence_length * model_dim)
+
+
+        # Output Losses
+        Lr_corrI = correye(targets, pred) # corr mat of measured->predicted should be high along diagonal, loww off diagonal 
+        Lr_mse = torch.FloatTensor(torch.nn.MSELoss()(pred, targets)) # MSE should be low
+        Lr_marg = distance_loss(targets, pred, neighbor=True) # predicted X should be far from nearet ground truth X (for a different subject)
+
+        # Latent Space Losses
+        Lz_corrI = correye(latent, latent) # correlation matrix of latent space should be low off diagonal
+        Lz_dist = distance_loss(latent, latent, neighbor=False) / (batch_size**2) # mean intersubject altent space distances should be high
+
+        Lr = Lr_corrI + Lr_marg + (1000 * Lr_mse) # 1000 from Krakencoder
+        Lz = Lz_corrI + Lz_dist
+
+        loss = Lr + (10 * Lz) # weighting Lz with 10 (from Krakencoder)
 
         loss.backward()
 
@@ -76,9 +95,8 @@ def test(model, train_loader_fortesting, test_loader, device):
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "ConvTransformer_Fisher"
+    model_type = "KrakLossConvTransformer_NoShuffle_AlteredLzDist"
     out_nodes = 100
-    fisherZtransform = True
 
     # loads in np train data/labels
     train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_data.npy")
@@ -86,10 +104,6 @@ if __name__ == "__main__":
 
     test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_data.npy")
     test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
-
-    if fisherZtransform:
-        train_label_np = np.arctanh(train_label_np)
-        test_label_np = np.arctanh(test_label_np)
 
     # adds start token to *_label_np
     pad=50
@@ -99,7 +113,7 @@ if __name__ == "__main__":
     # read numpy files into torch dataset and dataloader
     batch_size = 32
     train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=True, num_workers=10)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=False, num_workers=10)
 
     test_batch_size = 1
     test_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data_np).float(), torch.from_numpy(test_label_np).float())
@@ -108,7 +122,7 @@ if __name__ == "__main__":
     train_dataset_fortesting = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
     train_loader_fortesting = torch.utils.data.DataLoader(train_dataset, batch_size = test_batch_size, shuffle=False, num_workers=10)
 
-    write_fpath = f"/home/ahmadf/batch/sbatch.print{model_type}_{translation}"
+    write_fpath = f"/home/ahmadf/batch/temp/sbatch.print{model_type}_{translation}"
     write_to_file("Loaded in data.", filepath=write_fpath)
 
     # initialize model on device
@@ -134,7 +148,6 @@ if __name__ == "__main__":
 
     # initialize optimizer / loss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, eps=1e-9)
-    loss_fn = torch.nn.MSELoss()
 
     # reset params 
     model._reset_parameters()
@@ -148,7 +161,7 @@ if __name__ == "__main__":
     test_maes = []
 
     for epoch in range(0, 601):
-        targets_, preds_, loss = train(model, train_loader, loss_fn, device, model.input_dim, optimizer, epoch)
+        targets_, preds_, loss = train(model, train_loader, device, model.input_dim, optimizer, epoch)
         
         losses.append(float(loss.detach().numpy()))
 
@@ -163,7 +176,7 @@ if __name__ == "__main__":
         write_to_file(f"EPOCH 1-{epoch} TRAIN Losses:", filepath=write_fpath) 
         write_to_file(losses, filepath=write_fpath)
         
-        #torch.save(model.state_dict(), f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_{epoch}.pt")
+        torch.save(model.state_dict(), f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_{epoch}.pt")
 
         if epoch%10 == 0:
             train_mse, train_mae, test_mse, test_mae = test(model, train_loader_fortesting, test_loader, device)

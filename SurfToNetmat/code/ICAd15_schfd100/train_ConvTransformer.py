@@ -48,7 +48,7 @@ if __name__ == "__main__":
     train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_data.npy")
     train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_labels.npy")
 
-    write_fpath = f"/home/ahmadf/batch/sbatch.print{model_type}_{translation}"
+    write_fpath = f"/home/ahmadf/batch/temp3/sbatch.print{model_type}_{translation}"
 
     write_to_file("Loaded in data.", filepath=write_fpath)
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # read numpy files into torch dataset and dataloader
     batch_size = 32
     train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=False, num_workers=10)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=True, num_workers=10)
 
     # initialize model on device
     #device = "cuda" if torch.cuda.is_available() else "mps" if torch.has_mps or torch.backends.mps.is_available() else "cpu"

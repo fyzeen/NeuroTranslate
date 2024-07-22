@@ -179,7 +179,7 @@ class ProjectionConvFullTransformer(nn.Module):
         tgt = tgt.view(b, -1)
         tgt = self.projection(tgt.unsqueeze(-1))
 
-        return torch.tanh(tgt) 
+        return tgt #torch.tanh(tgt) 
 
 
     def forward(self, src, tgt, tgt_mask, dropout=0.1):
@@ -191,7 +191,7 @@ class ProjectionConvFullTransformer(nn.Module):
         # Apply positional encoding
         tgt = self.positional_encoding(tgt)
 
-        encoder_out = self.encoder(src)
+        latent = encoder_out = self.encoder(src)
 
         for layer in self.decoder_layers:
             tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=encoder_out, tgt_mask=tgt_mask)
@@ -199,7 +199,7 @@ class ProjectionConvFullTransformer(nn.Module):
         tgt = tgt.view(b, -1)
         tgt = self.projection(tgt.unsqueeze(-1))
         
-        return torch.tanh(tgt.squeeze())
+        return tgt.squeeze(), latent #torch.tanh(tgt.squeeze()), latent
     
 class GraphTransformer(nn.Module):
     def __init__(self, dim_model, encoder_depth, nhead, encoder_mlp_dim, decoder_input_dim, decoder_dim_feedforward, decoder_depth, dim_encoder_head, 
@@ -337,3 +337,255 @@ class TriuGraphTransformer(nn.Module):
         tgt = self.projection(tgt)
 
         return torch.tanh(tgt.squeeze())
+
+# From Samuel below:
+class SiT_nopool_linout(nn.Module):
+    def __init__(self, *,
+                        dim, 
+                        depth,
+                        heads,
+                        mlp_dim,
+                        num_patches = 320,
+                        num_classes= 4950,
+                        num_channels = 15,
+                        num_vertices = 153,
+                        dim_head = 64,
+                        dropout = 0.3,
+                        emb_dropout = 0.1
+                        ):
+
+        super().__init__()
+
+        # features of maps only add to number of patches, but dim of each patch stays at 4*153
+        patch_dim = num_channels * num_vertices # flattened patch
+
+        # linear embedding of the vectorized patches
+        # inputs has size = b * c * n * v, I think this changes depending on input featues for meshes, so 
+        # size = b * c * f * n * v where b = batch c = channels f = features, n=patches?, v=verteces?
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange('b c n v  -> b n (v c)'),
+            nn.Linear(patch_dim, dim),
+        ) # linear layer embeds the inputdim*153 -> attention dim
+
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim)) # plus one for regressino token according to paper
+        # good guide I used to walkthrough: https://medium.com/@brianpulfer/vision-transformers-from-scratch-pytorch-a-step-by-step-guide-96c3313c2e0c
+        self.dropout = nn.Dropout(emb_dropout)
+
+        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout) # torch transformer
+
+        decomp_attnpatch = num_patches * dim # size of decomposed patch and their attention vector
+
+        self.rearrange = Rearrange('b n d  -> b (n d)') # decomp them here, which will be the size of decomp_attnpatch
+
+        self.linear = nn.Linear(decomp_attnpatch,num_classes) # linear project from batch x 122k -> batch 4950
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, img):
+        #write_to_file('Looking into vectorized brain maps shape: {}'.format(img.size())) # should have size batch, chan, sphere(s) count, patches, verteces  
+        x = self.to_patch_embedding(img)
+        _, n, _ = x.shape # look above at to_patch_embedding see that it 'b c n v  -> b n (v c)' 256x320x384 if training at least
+        #write_to_file('Performed Patch embedding, and has shape:{}'.format(x.shape))
+
+        x += self.pos_embedding[:,:(n)] # spatial relationship across patches based on pos embedding of tokens
+        #write_to_file('Performed pos emb, now has shape: {}'.format(x.shape))
+        
+        x = self.dropout(x)
+        #write_to_file('Dropout used, now has shape: {}'.format(x.shape))
+        
+        x = self.transformer(x) # give embedded input to transformer architecture
+        #write_to_file('Passed through transformer architecture, now has shape: {}'.format(x.shape))
+
+        x = latent = self.rearrange(x)
+
+        x = self.linear(x)
+        #write_to_file('Collapsed patchesxattndim, now projected linearly to num_classes - has shape: {}'.format(x.shape))
+        
+        return x, latent
+    
+class VariationalSiT_nopool_linout(nn.Module):
+    def __init__(self, *,
+                        dim, 
+                        depth,
+                        heads,
+                        mlp_dim,
+                        VAE_latent_dim = 500,
+                        num_patches = 320,
+                        num_classes= 4950,
+                        num_channels = 15,
+                        num_vertices = 153,
+                        dim_head = 64,
+                        dropout = 0.3,
+                        emb_dropout = 0.1
+                        ):
+
+        super().__init__()
+
+        # features of maps only add to number of patches, but dim of each patch stays at 4*153
+        patch_dim = num_channels * num_vertices # flattened patch
+
+        # linear embedding of the vectorized patches
+        # inputs has size = b * c * n * v, I think this changes depending on input featues for meshes, so 
+        # size = b * c * f * n * v where b = batch c = channels f = features, n=patches?, v=verteces?
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange('b c n v  -> b n (v c)'),
+            nn.Linear(patch_dim, dim),
+        ) # linear layer embeds the inputdim*153 -> attention dim
+
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim)) 
+        self.dropout = nn.Dropout(emb_dropout)
+
+        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout) # torch transformer
+
+        decomp_attnpatch = num_patches * dim # size of decomposed patch and their attention vector
+
+        self.rearrange = Rearrange('b n d  -> b (n d)') # decomp them here, which will be the size of decomp_attnpatch
+
+        self.fc_mu = nn.Linear(decomp_attnpatch, VAE_latent_dim) # linear project from batch x 122k -> batch 500
+        self.fc_var = nn.Linear(decomp_attnpatch, VAE_latent_dim)
+        
+        self.projection = nn.Linear(VAE_latent_dim, num_classes)
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, img):
+        #write_to_file('Looking into vectorized brain maps shape: {}'.format(img.size())) # should have size batch, chan, sphere(s) count, patches, verteces  
+        x = self.to_patch_embedding(img)
+        _, n, _ = x.shape # look above at to_patch_embedding see that it 'b c n v  -> b n (v c)' 256x320x384 if training at least
+        #write_to_file('Performed Patch embedding, and has shape:{}'.format(x.shape))
+
+        x += self.pos_embedding[:,:(n)] # spatial relationship across patches based on pos embedding of tokens
+        #write_to_file('Performed pos emb, now has shape: {}'.format(x.shape))
+        
+        x = self.dropout(x)
+        #write_to_file('Dropout used, now has shape: {}'.format(x.shape))
+        
+        x = self.transformer(x) # give embedded input to transformer architecture
+        #write_to_file('Passed through transformer architecture, now has shape: {}'.format(x.shape))
+
+        x = self.rearrange(x)
+
+        mu = self.fc_mu(x)
+        log_var = self.fc_var(x)
+
+        std = torch.exp(0.5 * log_var)
+        epsilon = torch.randn_like(std)
+        x = mu + (std * epsilon)
+
+        x = self.projection(x)
+        
+        return x, mu, log_var
+
+class VariationalConvTransformer(nn.Module):
+    def __init__(self, dim_model, encoder_depth, nhead, encoder_mlp_dim, decoder_input_dim, decoder_dim_feedforward, decoder_depth, dim_encoder_head, 
+                 VAE_latent_dim=1000, latent_length=512, num_channels=15, dropout=0.1, num_patches=320, vertices_per_patch=153):
+        super(VariationalConvTransformer, self).__init__()
+
+        self.dim_model = dim_model
+        self.input_dim = decoder_input_dim
+        self.latent_length = latent_length
+
+        self.flatten_to_high_dim = nn.Conv1d(in_channels=decoder_input_dim, out_channels=latent_length*dim_model, kernel_size=1, groups=latent_length)
+        self.positional_encoding = PositionalEncoding(d_model=dim_model, seq_len=latent_length, dropout=dropout)
+
+        self.encoder = EncoderSiT(dim=dim_model, 
+                                  depth=encoder_depth, 
+                                  heads=nhead, 
+                                  mlp_dim=encoder_mlp_dim,
+                                  dim_head=dim_encoder_head,
+                                  num_channels=num_channels,  
+                                  num_patches=num_patches, 
+                                  num_vertices=vertices_per_patch, 
+                                  dropout=dropout,
+                                  output_length=latent_length,
+                                  emb_dropout=0.1)
+        
+        self.fc_mu = nn.Linear(dim_model * latent_length, VAE_latent_dim)
+        self.fc_var = nn.Linear(dim_model * latent_length, VAE_latent_dim)
+
+        self.vae_latent_to_encoder_out = nn.Linear(VAE_latent_dim, dim_model * latent_length)
+        
+        self.decoder_layers = nn.ModuleList([TransformerDecoderBlock(input_dim=decoder_input_dim, d_model=dim_model, nhead=nhead, dim_feedforward=decoder_dim_feedforward) for _ in range(decoder_depth)])
+
+        self.projection = nn.Conv1d(in_channels=latent_length*dim_model, out_channels=decoder_input_dim, kernel_size=1, groups=latent_length)
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+
+    def encode(self, src):
+        x = self.encoder(src)
+        x = x.view(x.size()[0], -1) # reshape to [b x model_dim * latent_length]
+
+        mu = self.fc_mu(x)
+        log_var = self.fc_var(x)
+
+        return [mu, log_var]
+    
+    def decode(self, tgt, encoder_out, tgt_mask):
+        b, _ = tgt.size()
+
+        # Project to high-dimensional space
+        tgt = self.flatten_to_high_dim(tgt.unsqueeze(-1))
+        tgt = tgt.view(b, -1, self.dim_model)
+                
+        # Apply positional encoding
+        tgt = self.positional_encoding(tgt)
+
+        # Reparameterization trick to sample from latent space
+        mu = encoder_out[0]
+        log_var = encoder_out[1]
+        std = torch.exp(0.5 * log_var)
+        epsilon = torch.randn_like(std)
+        z = mu + (std * epsilon)
+
+        vae_in_encoder_space = self.vae_latent_to_encoder_out(z)
+        vae_in_encoder_space = vae_in_encoder_space.view(b, self.latent_length, self.dim_model)
+
+
+        for layer in self.decoder_layers:
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=vae_in_encoder_space, tgt_mask=tgt_mask)
+
+        tgt = tgt.view(b, -1)
+        tgt = self.projection(tgt.unsqueeze(-1))
+
+        return tgt #torch.tanh(tgt) 
+
+
+    def forward(self, src, tgt, tgt_mask, dropout=0.1):
+        b, _ = tgt.size()
+        # Project to high-dimensional space
+        tgt = self.flatten_to_high_dim(tgt.unsqueeze(-1))
+        tgt = tgt.view(b, -1, self.dim_model)
+        
+        # Apply positional encoding
+        tgt = self.positional_encoding(tgt)
+
+        encoder_out = self.encode(src)
+        
+        # Reparameterization trick to sample from latent space
+        mu = encoder_out[0]
+        log_var = encoder_out[1]
+        std = torch.exp(0.5 * log_var)
+        epsilon = torch.randn_like(std)
+        z = mu + (std * epsilon)
+
+        vae_in_encoder_space = self.vae_latent_to_encoder_out(z)
+        vae_in_encoder_space = vae_in_encoder_space.view(b, self.latent_length, self.dim_model)
+
+
+        for layer in self.decoder_layers:
+            tgt, masked_attn_weights, cross_attn_weights = layer(tgt=tgt, memory=vae_in_encoder_space, tgt_mask=tgt_mask)
+        
+        tgt = tgt.view(b, -1)
+        tgt = self.projection(tgt.unsqueeze(-1))
+        
+        return tgt.squeeze(), mu, log_var #torch.tanh(tgt.squeeze()), mu, log_var

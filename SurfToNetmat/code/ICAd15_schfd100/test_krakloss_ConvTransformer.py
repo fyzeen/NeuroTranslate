@@ -15,11 +15,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 if __name__ == "__main__":
-    torch.multiprocessing.set_sharing_strategy('file_system')
-
     translation = "ICAd15_schfd100"
-    model_type = "GraphTransformer"
+    model_type = "KrakLossConvTransformer"
     out_nodes = 100
+
+    torch.multiprocessing.set_sharing_strategy('file_system')
 
     # loads in np train/test data/labels
     test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_data.npy")
@@ -29,32 +29,21 @@ if __name__ == "__main__":
     train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_labels.npy")
 
     # Takes only first n train and test subjects L hemis
-    #n=200
-    #train_data_np = train_data_np[:5, :, :, :]
-    #train_label_np = train_label_np[:5, :]
+    #train_data_np = train_data_np[:50, :, :, :]
+    #train_label_np = train_label_np[:50, :]
 
-    #test_data_np = test_data_np[:5, :, :, :]
-    #test_label_np = test_label_np[:5, :]
-
-    # adds start token to *_label_np
-    train_label_np = make_nemat_allsubj(train_label_np, out_nodes)
+    #test_data_np = test_data_np[:50, :, :, :]
+    #test_label_np = test_label_np[:50, :]
 
     train_ground_truth = np.zeros(train_label_np.shape)
     train_pred = np.zeros(train_label_np.shape)
-    
-    num_start_nodes = 2
-    for i in range(num_start_nodes):
-        train_label_np = add_start_node(train_label_np)
-
-
-    # Same for test
-    test_label_np = make_nemat_allsubj(test_label_np, out_nodes)
-
     test_ground_truth = np.zeros(test_label_np.shape)
     test_pred = np.zeros(test_label_np.shape)
 
-    for i in range(num_start_nodes):
-        test_label_np = add_start_node(test_label_np)
+    # adds start token to *_label_np
+    pad=50
+    test_label_np = add_start_token_np(test_label_np, n=pad)
+    train_label_np = add_start_token_np(train_label_np, n=pad)
 
 
     # read numpy files into torch dataset and dataloader
@@ -72,20 +61,21 @@ if __name__ == "__main__":
     #device = "cuda" if torch.cuda.is_available() else "mps" if torch.has_mps or torch.backends.mps.is_available() else "cpu"
     device = "cpu"
 
-    # GraphTransformer
-    model = GraphTransformer(dim_model=102, 
-                             encoder_depth=6, 
-                             nhead=6, 
-                             encoder_mlp_dim=102,
-                             decoder_input_dim=102, 
-                             decoder_dim_feedforward=102,
-                             decoder_depth=6,
-                             dim_encoder_head=17,
-                             latent_length=102,
-                             num_channels=15,
-                             num_patches=320,
-                             vertices_per_patch=153,
-                             dropout=0.1)
+    # ConvTransformer
+    model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+                                          encoder_depth=6,
+                                          nhead=6,
+                                          encoder_mlp_dim=36, 
+                                          decoder_input_dim=5000, 
+                                          decoder_dim_feedforward=36,
+                                          decoder_depth=6,
+                                          dim_encoder_head=16,
+                                          latent_length=100,
+                                          num_channels=15,
+                                          num_patches=320, 
+                                          vertices_per_patch=153,
+                                          dropout=0.1)
+
 
     model.load_state_dict(torch.load(f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_600.pt"))
     model.eval()
@@ -99,8 +89,8 @@ if __name__ == "__main__":
     train_targets = []
     test_targets = []
 
-    train_preds_decoder = []
-    test_preds_decoder = []
+    train_preds_ConvDecoder = []
+    test_preds_ConvDecoder = []
 
     train_maes = []
     test_maes = []
@@ -109,44 +99,30 @@ if __name__ == "__main__":
         for i, data in enumerate(train_loader):
             inputs, targets = data[0].to(device), data[1].to(device).squeeze().unsqueeze(0) #only use unsqueeze(0) if batch size is 1
 
-            decoder_pred = greedy_decode_graph(model=model, source=inputs, latent_length=model.input_dim, device=device, b=batch_size)
-
-            train_ground_truth[i, :, :] = targets.squeeze().numpy()[2:, 2:]
-            train_pred[i, :, :] = decoder_pred.squeeze().detach().numpy()[2:, 2:]
+            convDecoder_pred = greedy_decode_conv(model=model, source=inputs, input_dim=model.input_dim, device=device, b=batch_size)
+            
+            train_ground_truth[i, :] = targets.squeeze().numpy()[pad:]
+            train_pred[i, :] = convDecoder_pred.squeeze().detach().numpy()[pad:]
 
             train_targets.append(targets)
-            train_preds_decoder.append(decoder_pred)
+            train_preds_ConvDecoder.append(convDecoder_pred)
 
-            #write_to_file("MAE TRAIN Target vs TRAIN Prediction ConvDecoder:", filepath=write_fpath)
-            #write_to_file(np.mean(np.abs(targets.squeeze().numpy()[pad:] - convDecoder_pred.squeeze().detach().numpy()[pad:])), filepath=write_fpath)
-            mae = np.mean(np.abs(train_ground_truth[i, :, :][np.tril_indices(out_nodes, k=1)] - train_pred[i, :, :][np.tril_indices(out_nodes, k=1)]))
-
-            #mae = np.mean(np.abs(targets.squeeze().numpy()[2:, 2:] - decoder_pred.squeeze().detach().numpy()[2:, 2:]))
+            mae = np.mean(np.abs(targets.squeeze().numpy()[pad:] - convDecoder_pred.squeeze().detach().numpy()[pad:]))
             train_maes.append(mae)
         
-
         for i, data in enumerate(test_loader):
-            inputs, targets = data[0].to(device), data[1].to(device).squeeze().unsqueeze(0) #only use unsqueeze(0) if batch size is 1
+            inputs, targets = data[0].to(device), data[1].to(device).squeeze()#.unsqueeze(0) #only use unsqueeze(0) if batch size is 1
 
-            decoder_pred = greedy_decode_graph(model=model, source=inputs, latent_length=model.input_dim, device=device, b=batch_size)
-            #decoder_pred = model(src=inputs, tgt=targets, tgt_mask=generate_subsequent_mask(model.latent_length).to(device))
+            convDecoder_pred = greedy_decode_conv(model=model, source=inputs, input_dim=model.input_dim, device=device, b=batch_size)
 
-            test_ground_truth[i, :, :] = targets.squeeze().numpy()[2:, 2:]
-            test_pred[i, :, :] = decoder_pred.squeeze().detach().numpy()[2:, 2:]
+            test_ground_truth[i, :] = targets.squeeze().numpy()[pad:]
+            test_pred[i, :] = convDecoder_pred.squeeze().detach().numpy()[pad:]
 
             test_targets.append(targets)
-            test_preds_decoder.append(decoder_pred)
+            test_preds_ConvDecoder.append(convDecoder_pred)
 
-            #write_to_file("MAE TEST Target vs TEST Prediction ConvDecoder:", filepath=write_fpath)
-            #write_to_file(np.mean(np.abs(targets.squeeze().numpy()[pad:] - convDecoder_pred.squeeze().detach().numpy()[pad:])), filepath=write_fpath)
-            mae = np.mean(np.abs(test_ground_truth[i, :, :][np.tril_indices(out_nodes, k=1)] - test_pred[i, :, :][np.tril_indices(out_nodes, k=1)]))
-
-            test_maes.append(mae)
-            
-            
-            #mae = np.mean(np.abs(targets.squeeze().numpy()[2:, 2:] - decoder_pred.squeeze().detach().numpy()[2:, 2:]))
-
-
+            test_maes.append(np.mean(np.abs(targets.squeeze().numpy()[pad:] - convDecoder_pred.squeeze().detach().numpy()[pad:])))
+    
     write_to_file("TRAIN MAEs:", filepath=write_fpath)
     write_to_file(train_maes, filepath=write_fpath)
     write_to_file("TEST MAEs:", filepath=write_fpath)

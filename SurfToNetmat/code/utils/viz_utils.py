@@ -87,7 +87,7 @@ def get_lower_tris(mat):
         trils.append(tril)
     return np.array(trils)
 
-def plot_traintest_losses(train_losses, test_losses, loss="MSE"):
+def plot_traintest_losses_same_axes(train_losses, test_losses, loss="MSE"):
     """
     Plots the MSE losses from training and test set.
 
@@ -98,7 +98,7 @@ def plot_traintest_losses(train_losses, test_losses, loss="MSE"):
 
     # Generate epoch numbers for the training and test losses
     epochs = list(range(1, len(train_losses) + 1))
-    test_epochs = [10 * i for i in range(1, len(test_losses) + 1)]
+    test_epochs = [10 * i for i in range(0, len(test_losses))]
 
     # Plot the training losses
     plt.figure(figsize=(6, 4))
@@ -113,4 +113,52 @@ def plot_traintest_losses(train_losses, test_losses, loss="MSE"):
     plt.title(f'Training and Test {loss} Losses')
     plt.legend()
     plt.grid(True)
+    plt.show()
+
+def plot_traintest_losses_diff_axes(train_losses, test_losses, loss="Loss", test_range=None):
+    """
+    Plots the MSE losses from training and test set.
+
+    Parameters:
+    - train_losses: List of MSE values computed each epoch.
+    - test_losses: List of MSE values computed every ten epochs.
+    - loss: String indicating the type of loss (default is "MSE").
+    """
+
+    # Generate epoch numbers for the training and test losses
+    epochs = list(range(0, len(train_losses)))
+    test_epochs = [10 * i for i in range(0, len(test_losses))]
+
+    # Create figure and axes
+    fig, ax1 = plt.subplots(figsize=(8, 6))
+
+    # Plot the training losses on ax1
+    ax1.plot(epochs, train_losses, label=f'Train {loss}', marker=".")
+
+    # Set labels and title for ax1
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel(f'Train {loss}')
+    ax1.set_title(f'Training and Test {loss} Losses')
+
+    # Create a second y-axis sharing the same x-axis
+    ax2 = ax1.twinx()
+
+    # Plot the test losses on ax2
+    ax2.plot(test_epochs, test_losses, label=f'Test {loss} (every 10 epochs)', marker='x', color='red')
+
+    # Set label for ax2
+    ax2.set_ylabel(f'Test {loss} (every 10 epochs)')
+
+    if test_range is not None:
+        ax2.set_yticks(test_range)
+
+    # Combine legends from both axes
+    lines, labels = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax2.legend(lines + lines2, labels + labels2, loc='best')
+
+    # Enable grid for both axes
+    ax1.grid(True)
+
+    # Show plot
     plt.show()

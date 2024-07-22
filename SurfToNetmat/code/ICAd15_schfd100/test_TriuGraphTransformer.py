@@ -87,7 +87,7 @@ if __name__ == "__main__":
                                  vertices_per_patch=153,
                                  dropout=0.1)
 
-    model.load_state_dict(torch.load(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/TransformerTest/saved_models/{translation}/{model_type}_800.pt"))
+    model.load_state_dict(torch.load(f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/TransformerTest/saved_models/{translation}/{model_type}_800.pt"))
     model.eval()
     model.to(device)
 

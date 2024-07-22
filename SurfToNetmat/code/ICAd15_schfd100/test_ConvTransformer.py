@@ -16,7 +16,7 @@ import torch.nn.functional as F
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "ConvTransformer"
+    model_type = "ConvTransformer_SmallerDropout"
     out_nodes = 100
 
     torch.multiprocessing.set_sharing_strategy('file_system')
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     train_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = batch_size, shuffle=False, num_workers=10)
 
-    write_fpath = f"/home/ahmadf/batch/sbatch.printTest{model_type}_{translation}"
+    write_fpath = f"/home/ahmadf/batch/temp3/sbatch.printTest2{model_type}_{translation}"
     write_to_file("Loaded in data.", filepath=write_fpath)
 
     # initialize model on device
@@ -77,7 +77,7 @@ if __name__ == "__main__":
                                           dropout=0.1)
 
 
-    model.load_state_dict(torch.load(f"/home/ahmadf/NeuroTranslate/code/SurfToNetmat/saved_model/{translation}/{model_type}_600.pt"))
+    model.load_state_dict(torch.load(f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_480.pt"))
     model.eval()
     model.to(device)
 
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     write_to_file("TEST MAEs:", filepath=write_fpath)
     write_to_file(test_maes, filepath=write_fpath)
 
-    np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/train_ground_truth.npy", train_ground_truth)
-    np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/train_pred.npy", train_pred)
-    np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/test_ground_truth.npy", test_ground_truth)
-    np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/test_pred.npy", test_pred)
+    #np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/train_ground_truth.npy", train_ground_truth)
+    #np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/train_pred.npy", train_pred)
+    #np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/test_ground_truth.npy", test_ground_truth)
+    #np.save(f"/home/ahmadf/NeuroTranslate/SurfToNetmat/model_output/{translation}/{model_type}/test_pred.npy", test_pred)
