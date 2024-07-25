@@ -38,7 +38,7 @@ def train(model, train_loader, device, optimizer, epoch, reset_params=True):
 
         # Latent Space Losses
         Lz_corrI = correye(latent, latent) # correlation matrix of latent space should be low off diagonal
-        Lz_dist = distance_loss(latent, latent, neighbor=False) / (targets.size()[0]**2) # mean intersubject altent space distances should be high
+        Lz_dist = distance_loss(latent, latent, neighbor=False) # mean intersubject altent space distances should be high
 
         Lr = Lr_corrI + Lr_marg + (1000 * Lr_mse) 
         Lz = Lz_corrI + Lz_dist
@@ -49,6 +49,7 @@ def train(model, train_loader, device, optimizer, epoch, reset_params=True):
 
         loss.backward()
 
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 4.0)
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
 
@@ -58,7 +59,7 @@ def train(model, train_loader, device, optimizer, epoch, reset_params=True):
     return targets_, preds_, loss, mae
 
 
-def test(model, train_loader_fortesting, test_loader, device, pca):
+def test(model, train_loader_fortesting, test_loader, device, pca, mean_train_label):
     model.eval()
     model.to(device)
 
@@ -106,7 +107,7 @@ def test(model, train_loader_fortesting, test_loader, device, pca):
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "PCAKrakLossEncoder"
+    model_type = "PCAKrakLossEncoder_Tiny"
     out_nodes = 100
 
 
@@ -118,7 +119,7 @@ if __name__ == "__main__":
     test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
 
     # compute pca on train
-    pca = PCA(n_components=1000)
+    pca = PCA(n_components=256)
     pca.fit(train_label_np)
     train_transform = pca.transform(train_label_np)
     test_transform = pca.transform(test_label_np)
@@ -144,16 +145,55 @@ if __name__ == "__main__":
     device = "cpu"
 
 
-    # GraphTransformer
-    model = SiT_nopool_linout(dim=384,
+    # Encoder_Large
+    '''model = SiT_nopool_linout(dim=384,
                               depth=12,
                               heads=6, 
                               mlp_dim=1536,
                               num_patches=320,
-                              num_classes=1000,
+                              num_classes=256,
                               num_channels=15,
                               num_vertices=153,
                               dim_head=64,
+                              dropout=0.1,
+                              emb_dropout=0.1)'''
+    
+    # Encoder_Shallow
+    '''model = SiT_nopool_linout(dim=384,
+                              depth=2,
+                              heads=6, 
+                              mlp_dim=1536,
+                              num_patches=320,
+                              num_classes=256,
+                              num_channels=15,
+                              num_vertices=153,
+                              dim_head=64,
+                              dropout=0.1,
+                              emb_dropout=0.1)'''
+    
+    # Encoder_SmallDim
+    '''model = SiT_nopool_linout(dim=48,
+                              depth=12,
+                              heads=6, 
+                              mlp_dim=96,
+                              num_patches=320,
+                              num_classes=256,
+                              num_channels=15,
+                              num_vertices=153,
+                              dim_head=8,
+                              dropout=0.1,
+                              emb_dropout=0.1)'''
+    
+    # Encoder_Tiny
+    model = SiT_nopool_linout(dim=48,
+                              depth=2,
+                              heads=6, 
+                              mlp_dim=96,
+                              num_patches=320,
+                              num_classes=256,
+                              num_channels=15,
+                              num_vertices=153,
+                              dim_head=8,
                               dropout=0.1,
                               emb_dropout=0.1)
     
@@ -161,9 +201,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, eps=1e-9)
 
     # reset params 
-    #model._reset_parameters()
-
-    model.load_state_dict(torch.load(f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_600.pt"))
+    model._reset_parameters()
 
     mean_train_label = np.mean(train_label_np, axis=0)
 
@@ -177,7 +215,7 @@ if __name__ == "__main__":
     test_maes = []
     test_corrs = []
 
-    for epoch in range(601, 1201):
+    for epoch in range(0, 601):
         targets_, preds_, loss, mae = train(model, train_loader, device, optimizer, epoch)
         
         losses.append(float(loss.detach().numpy()))

@@ -108,7 +108,7 @@ def test(model, train_loader_fortesting, test_loader, device, pca, mean_train_la
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "PCAVarKrakLossEncoder_GradientClipping"
+    model_type = "PCAVAEKrakLossEncoder_Tiny"
     out_nodes = 100
 
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
 
     # compute pca on train
-    pca = PCA(n_components=1000)
+    pca = PCA(n_components=256)
     pca.fit(train_label_np)
     train_transform = pca.transform(train_label_np)
     test_transform = pca.transform(test_label_np)
@@ -145,23 +145,64 @@ if __name__ == "__main__":
     #device = "cuda" if torch.cuda.is_available() else "mps" if torch.has_mps or torch.backends.mps.is_available() else "cpu"
     device = "cpu"
 
-
-    # GraphTransformer
-    model = VariationalSiT_nopool_linout(dim=384,
+    # VAEKraklossEncoder_Large
+    '''model = VariationalSiT_nopool_linout(dim=384,
                                          depth=12,
                                          heads=6, 
-                                         mlp_dim=1536,
-                                         VAE_latent_dim=500,
+                                         mlp_dim=1536, # was originally 1536
+                                         VAE_latent_dim=256,
                                          num_patches=320,
-                                         num_classes=1000,
+                                         num_classes=256,
                                          num_channels=15,
                                          num_vertices=153,
                                          dim_head=64,
                                          dropout=0.1,
+                                         emb_dropout=0.1)'''
+    
+    # VAEKraklossEncoder_Shallow
+    '''model = VariationalSiT_nopool_linout(dim=384,
+                                         depth=2,
+                                         heads=6, 
+                                         mlp_dim=1536, # was originally 1536
+                                         VAE_latent_dim=256,
+                                         num_patches=320,
+                                         num_classes=256,
+                                         num_channels=15,
+                                         num_vertices=153,
+                                         dim_head=64,
+                                         dropout=0.1,
+                                         emb_dropout=0.1)'''
+    
+    # VAEKraklossEncoder_SmallDim
+    '''model = VariationalSiT_nopool_linout(dim=48,
+                                         depth=12,
+                                         heads=6, 
+                                         mlp_dim=48, 
+                                         VAE_latent_dim=48,
+                                         num_patches=320,
+                                         num_classes=256,
+                                         num_channels=15,
+                                         num_vertices=153,
+                                         dim_head=8,
+                                         dropout=0.1,
+                                         emb_dropout=0.1)'''
+    
+    # VAEKraklossEncoder_Tiny
+    model = VariationalSiT_nopool_linout(dim=48,
+                                         depth=2,
+                                         heads=6, 
+                                         mlp_dim=48, 
+                                         VAE_latent_dim=48,
+                                         num_patches=320,
+                                         num_classes=256,
+                                         num_channels=15,
+                                         num_vertices=153,
+                                         dim_head=8,
+                                         dropout=0.1,
                                          emb_dropout=0.1)
     
     # initialize optimizer / loss
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, eps=1e-9)\
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, eps=1e-9)
     
     mean_train_label = np.mean(train_label_np, axis=0)
 

@@ -162,3 +162,21 @@ def plot_traintest_losses_diff_axes(train_losses, test_losses, loss="Loss", test
 
     # Show plot
     plt.show()
+
+def plot_demeaned_corrs(train_corrs, test_corrs):
+    epochs = list(range(1, len(train_corrs) + 1))
+
+     # Plot the training losses
+    plt.figure(figsize=(6, 4))
+    plt.plot(epochs, train_corrs, label=f'Demeaned Train Corr', marker=".")
+
+    # Plot the test losses
+    plt.plot(epochs, test_corrs, label=f'Demeaned Test Corr', color='red', marker='x')
+
+    # Add labels and title
+    plt.xlabel('Epochs')
+    plt.ylabel(f'Demeaned Corr')
+    plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.legend()
+    plt.grid(True)
+    plt.show()

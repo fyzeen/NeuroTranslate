@@ -16,6 +16,42 @@ import torch.nn.functional as F
 
 from sklearn.decomposition import PCA
 
+# potentially use
+class WeightedMSELoss(nn.Module):
+    def __init__(self, weights, pad=0):
+        super(WeightedMSELoss, self).__init__()
+
+        if pad != 0:
+            zeros_to_append = np.zeros(8, dtype=weights.dtype)
+            weights = np.concatenate((zeros_to_append, weights))
+
+        self.weights = torch.tensor(weights)
+
+    def forward(self, input, target, weights=None):
+        """
+        Compute the weighted Mean Squared Error (MSE) loss.
+        
+        Args:
+        - input (torch.Tensor): Predicted values from the model (batch_size, ...)
+        - target (torch.Tensor): True values (batch_size, ...)
+        - weights (torch.Tensor): Weights for each data point (batch_size, ...)
+        
+        Returns:
+        - torch.Tensor: Weighted MSE loss
+        """
+
+        # Use self.weights if weights is not provided
+        if weights is None:
+            weights = self.weights
+
+        # Compute squared error
+        squared_error = torch.pow(input - target, 2)
+        
+        # Apply weights
+        weighted_error = squared_error * weights
+        
+        return torch.mean(weighted_error)
+    
 
 def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, reset_params=True):
     model.train()
@@ -40,7 +76,7 @@ def train(model, train_loader, loss_fn, device, input_dim, optimizer, epoch, res
 
     return targets_, preds_, loss
 
-def test(model, train_loader_fortesting, test_loader, device, pca):
+def test(model, train_loader_fortesting, test_loader, device, pca, mean_train_label):
     model.eval()
     model.to(device)
 
@@ -65,7 +101,7 @@ def test(model, train_loader_fortesting, test_loader, device, pca):
             mse_train_list.append(mse)
 
             inverse_pca = pca.inverse_transform(np.expand_dims(convDecoder_pred.squeeze().detach().numpy()[pad:], 0))
-            corr = np.corrcoef(targets.squeeze().numpy(), inverse_pca.squeeze(0))[0, 1]
+            corr = np.corrcoef(targets.squeeze().numpy() - mean_train_label, inverse_pca.squeeze(0) - mean_train_label)[0, 1]
             corr_train_list.append(corr)
         
         for i, data in enumerate(test_loader):
@@ -80,7 +116,7 @@ def test(model, train_loader_fortesting, test_loader, device, pca):
             mse_test_list.append(mse)
 
             inverse_pca = pca.inverse_transform(np.expand_dims(convDecoder_pred.squeeze().detach().numpy()[pad:], 0))
-            corr = np.corrcoef(targets.squeeze().numpy(), inverse_pca.squeeze(0))[0, 1]
+            corr = np.corrcoef(targets.squeeze().numpy() - mean_train_label, inverse_pca.squeeze(0) - mean_train_label)[0, 1]
             corr_test_list.append(corr)
     
     return np.mean(mse_train_list), np.mean(mae_train_list), np.mean(mse_test_list), np.mean(mae_test_list), np.mean(corr_train_list), np.mean(corr_test_list)
@@ -88,7 +124,7 @@ def test(model, train_loader_fortesting, test_loader, device, pca):
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "PCAConvTransformer"
+    model_type = "PCAConvTransformer_Tiny_WeightedMSE"
     out_nodes = 100
 
     # loads in np train data/labels
@@ -99,13 +135,13 @@ if __name__ == "__main__":
     test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
 
     # compute pca on train
-    pca = PCA(n_components=1000)
+    pca = PCA(n_components=256)
     pca.fit(train_label_np)
     train_transform = pca.transform(train_label_np)
     test_transform = pca.transform(test_label_np)
 
     # adds start token to *_label_np
-    pad=10
+    pad=8
     train_transform = add_start_token_np(train_transform, n=pad)
     test_transform = add_start_token_np(test_transform, n=pad)
 
@@ -121,7 +157,7 @@ if __name__ == "__main__":
     train_dataset_fortesting = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_transform).float(), torch.from_numpy(train_label_np).float())
     train_loader_fortesting = torch.utils.data.DataLoader(train_dataset_fortesting, batch_size = test_batch_size, shuffle=False, num_workers=10)
 
-    write_fpath = f"/home/ahmadf/batch/temp/sbatch.print{model_type}_{translation}"
+    write_fpath = f"/home/ahmadf/batch/sbatch.print{model_type}_{translation}"
     write_to_file("Loaded in data.", filepath=write_fpath)
 
     # initialize model on device
@@ -129,16 +165,60 @@ if __name__ == "__main__":
     device = "cpu"
 
 
-    # ConvTransformer
-    model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+    # ConvTransformer_Large
+    '''model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
                                           encoder_depth=6,
                                           nhead=6,
-                                          encoder_mlp_dim=36, 
-                                          decoder_input_dim=1010, 
-                                          decoder_dim_feedforward=36,
+                                          encoder_mlp_dim=96, 
+                                          decoder_input_dim=264, # was 1010 
+                                          decoder_dim_feedforward=96,
                                           decoder_depth=6,
                                           dim_encoder_head=16,
-                                          latent_length=101,
+                                          latent_length=33, # was 101
+                                          num_channels=15,
+                                          num_patches=320, 
+                                          vertices_per_patch=153,
+                                          dropout=0.1)'''
+    # ConvTransformer_Shallow
+    '''model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+                                          encoder_depth=2,
+                                          nhead=6,
+                                          encoder_mlp_dim=96, 
+                                          decoder_input_dim=264, # was 1010 
+                                          decoder_dim_feedforward=96,
+                                          decoder_depth=2,
+                                          dim_encoder_head=16,
+                                          latent_length=33, # was 101
+                                          num_channels=15,
+                                          num_patches=320, 
+                                          vertices_per_patch=153,
+                                          dropout=0.1)'''
+    
+    # ConvTransformer_SmallDim
+    '''model = ProjectionConvFullTransformer(dim_model=24, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+                                          encoder_depth=6,
+                                          nhead=4,
+                                          encoder_mlp_dim=24, 
+                                          decoder_input_dim=264,  
+                                          decoder_dim_feedforward=24,
+                                          decoder_depth=6,
+                                          dim_encoder_head=6,
+                                          latent_length=33, 
+                                          num_channels=15,
+                                          num_patches=320, 
+                                          vertices_per_patch=153,
+                                          dropout=0.1)'''
+    
+    #ConvTransformer_Tiny
+    model = ProjectionConvFullTransformer(dim_model=24, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+                                          encoder_depth=2,
+                                          nhead=4,
+                                          encoder_mlp_dim=24, 
+                                          decoder_input_dim=264, # was 1010 
+                                          decoder_dim_feedforward=24,
+                                          decoder_depth=2,
+                                          dim_encoder_head=6,
+                                          latent_length=33, # was 101
                                           num_channels=15,
                                           num_patches=320, 
                                           vertices_per_patch=153,
@@ -147,7 +227,10 @@ if __name__ == "__main__":
 
     # initialize optimizer / loss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, eps=1e-9)
-    loss_fn = torch.nn.MSELoss()
+    #loss_fn = torch.nn.MSELoss()
+    loss_fn = WeightedMSELoss(weights=pca.explained_variance_, pad=pad)
+
+    mean_train_label = np.mean(train_label_np, axis=0)
 
     # reset params 
     model._reset_parameters()
@@ -181,7 +264,7 @@ if __name__ == "__main__":
         torch.save(model.state_dict(), f"/scratch/ahmadf/NeuroTranslate/SurfToNetmat/saved_models/{translation}/{model_type}_{epoch}.pt")
 
         if epoch%10 == 0:
-            train_mse, train_mae, test_mse, test_mae, train_corr, test_corr = test(model, train_loader_fortesting, test_loader, device, pca)
+            train_mse, train_mae, test_mse, test_mae, train_corr, test_corr = test(model, train_loader_fortesting, test_loader, device, pca, mean_train_label)
 
             train_mses_testing.append(train_mse)
             train_maes_testing.append(train_mae)

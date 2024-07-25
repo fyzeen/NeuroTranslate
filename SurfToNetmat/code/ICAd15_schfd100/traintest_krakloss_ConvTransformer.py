@@ -40,7 +40,7 @@ def train(model, train_loader, device, input_dim, optimizer, epoch, reset_params
 
         # Latent Space Losses
         Lz_corrI = correye(latent, latent) # correlation matrix of latent space should be low off diagonal
-        Lz_dist = distance_loss(latent, latent, neighbor=False) / (batch_size**2) # mean intersubject altent space distances should be high
+        Lz_dist = 0 #distance_loss(latent, latent, neighbor=False) # mean intersubject altent space distances should be high
 
         Lr = Lr_corrI + Lr_marg + (1000 * Lr_mse) # 1000 from Krakencoder
         Lz = Lz_corrI + Lz_dist
@@ -95,7 +95,7 @@ def test(model, train_loader_fortesting, test_loader, device):
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "KrakLossConvTransformer_NoShuffle_AlteredLzDist"
+    model_type = "KrakLossConvTransformer_NoLzDist"
     out_nodes = 100
 
     # loads in np train data/labels
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     train_dataset_fortesting = torch.utils.data.TensorDataset(torch.from_numpy(train_data_np).float(), torch.from_numpy(train_label_np).float())
     train_loader_fortesting = torch.utils.data.DataLoader(train_dataset, batch_size = test_batch_size, shuffle=False, num_workers=10)
 
-    write_fpath = f"/home/ahmadf/batch/temp/sbatch.print{model_type}_{translation}"
+    write_fpath = f"/home/ahmadf/batch/temp2/sbatch.print{model_type}_{translation}"
     write_to_file("Loaded in data.", filepath=write_fpath)
 
     # initialize model on device
