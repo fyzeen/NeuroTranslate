@@ -33,7 +33,9 @@ echo Activated environment with name: $CONDA_DEFAULT_ENV
 #python3 traintest_PCAVariationalKrakLossConvTransformer.py
 #python3 traintest_PCAkrakloss_encoder.py
 #python3 traintest_PCAVariationalkrakloss_encoder.py
+python traintest_PCAVanillaKrakencoder.py
 
-python3 meshPCAtest.py
+
+#python3 meshPCAtest.py
 
 conda activate # not specified means back to (base)
