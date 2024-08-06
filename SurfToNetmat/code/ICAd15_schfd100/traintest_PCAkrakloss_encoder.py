@@ -107,16 +107,17 @@ def test(model, train_loader_fortesting, test_loader, device, pca, mean_train_la
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "PCAKrakLossEncoder_Tiny"
+    model_type = "PCAKrakLossEncoder_Large_LHemi"
     out_nodes = 100
 
 
     # loads in np train data/labels
-    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_data.npy")
-    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_labels.npy")
+    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_data.npy")
+    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_labels.npy")
 
-    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_data.npy")
-    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
+    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_data.npy")
+    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_labels.npy")
+
 
     # compute pca on train
     pca = PCA(n_components=256)
@@ -146,7 +147,7 @@ if __name__ == "__main__":
 
 
     # Encoder_Large
-    '''model = SiT_nopool_linout(dim=384,
+    model = SiT_nopool_linout(dim=384,
                               depth=12,
                               heads=6, 
                               mlp_dim=1536,
@@ -156,7 +157,7 @@ if __name__ == "__main__":
                               num_vertices=153,
                               dim_head=64,
                               dropout=0.1,
-                              emb_dropout=0.1)'''
+                              emb_dropout=0.1)
     
     # Encoder_Shallow
     '''model = SiT_nopool_linout(dim=384,
@@ -185,7 +186,7 @@ if __name__ == "__main__":
                               emb_dropout=0.1)'''
     
     # Encoder_Tiny
-    model = SiT_nopool_linout(dim=48,
+    '''model = SiT_nopool_linout(dim=48,
                               depth=2,
                               heads=6, 
                               mlp_dim=96,
@@ -195,7 +196,7 @@ if __name__ == "__main__":
                               num_vertices=153,
                               dim_head=8,
                               dropout=0.1,
-                              emb_dropout=0.1)
+                              emb_dropout=0.1)'''
     
     # initialize optimizer / loss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, eps=1e-9)

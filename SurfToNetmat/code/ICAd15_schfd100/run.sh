@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J ICAd15_schfd100
-#SBATCH -o /home/ahmadf/batch/temp/sbatch.out%j
-#SBATCH -e /home/ahmadf/batch/temp/sbatch.err%j
+#SBATCH -o /home/ahmadf/batch/sbatch.out%j
+#SBATCH -e /home/ahmadf/batch/sbatch.err%j
 #SBATCH --partition=tier2_cpu
 #SBATCH --account=janine_bijsterbosch
 #SBATCH --mem-per-cpu 10G 
@@ -33,8 +33,9 @@ echo Activated environment with name: $CONDA_DEFAULT_ENV
 #python3 traintest_PCAVariationalKrakLossConvTransformer.py
 #python3 traintest_PCAkrakloss_encoder.py
 #python3 traintest_PCAVariationalkrakloss_encoder.py
-python traintest_PCAVanillaKrakencoder.py
+#python3 traintest_PCAVanillaKrakencoder.py
 
+python3 traintest_PCATwoHemi_krakloss_encoder.py
 
 #python3 meshPCAtest.py
 

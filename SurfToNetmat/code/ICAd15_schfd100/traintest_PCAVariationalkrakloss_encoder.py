@@ -108,16 +108,16 @@ def test(model, train_loader_fortesting, test_loader, device, pca, mean_train_la
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "PCAVAEKrakLossEncoder_Tiny"
+    model_type = "PCAVAEKrakLossEncoder_Tiny_LHemi"
     out_nodes = 100
 
 
     # loads in np train data/labels
-    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_data.npy")
-    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_labels.npy")
+    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_data.npy")
+    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_labels.npy")
 
-    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_data.npy")
-    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
+    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_data.npy")
+    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_labels.npy")
 
     # compute pca on train
     pca = PCA(n_components=256)

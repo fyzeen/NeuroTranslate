@@ -124,15 +124,16 @@ def test(model, train_loader_fortesting, test_loader, device, pca, mean_train_la
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "PCAConvTransformer_Tiny_WeightedMSE"
+    model_type = "PCAConvTransformer_Large_LHemi"
     out_nodes = 100
 
     # loads in np train data/labels
-    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_data.npy")
-    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_labels.npy")
+    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_data.npy")
+    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_labels.npy")
 
-    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_data.npy")
-    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
+    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_data.npy")
+    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_labels.npy")
+
 
     # compute pca on train
     pca = PCA(n_components=256)
@@ -166,7 +167,7 @@ if __name__ == "__main__":
 
 
     # ConvTransformer_Large
-    '''model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+    model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
                                           encoder_depth=6,
                                           nhead=6,
                                           encoder_mlp_dim=96, 
@@ -178,7 +179,7 @@ if __name__ == "__main__":
                                           num_channels=15,
                                           num_patches=320, 
                                           vertices_per_patch=153,
-                                          dropout=0.1)'''
+                                          dropout=0.1)
     # ConvTransformer_Shallow
     '''model = ProjectionConvFullTransformer(dim_model=96, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
                                           encoder_depth=2,
@@ -210,7 +211,7 @@ if __name__ == "__main__":
                                           dropout=0.1)'''
     
     #ConvTransformer_Tiny
-    model = ProjectionConvFullTransformer(dim_model=24, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
+    '''model = ProjectionConvFullTransformer(dim_model=24, # lowkey, i think I can keep dim_model as anything I want! -- only latent_length and decoder_input_dim need compatability
                                           encoder_depth=2,
                                           nhead=4,
                                           encoder_mlp_dim=24, 
@@ -222,7 +223,7 @@ if __name__ == "__main__":
                                           num_channels=15,
                                           num_patches=320, 
                                           vertices_per_patch=153,
-                                          dropout=0.1)
+                                          dropout=0.1)'''
 
 
     # initialize optimizer / loss

@@ -107,16 +107,16 @@ def test(model, train_loader_fortesting, test_loader, device, pca, mean_train_la
 
 if __name__ == "__main__":
     translation = "ICAd15_schfd100"
-    model_type = "PCAVanillaKrakencoder_Deep"
+    model_type = "PCAVanillaKrakencoder_LHemi"
     out_nodes = 100
 
 
     # loads in np train data/labels
-    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_data.npy")
-    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/train_labels.npy")
+    train_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_data.npy")
+    train_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_train_labels.npy")
 
-    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_data.npy")
-    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/test_labels.npy")
+    test_data_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_data.npy")
+    test_label_np = np.load(f"/scratch/naranjorincon/surface-vision-transformers/data/{translation}/template/1L_test_labels.npy")
 
     # compute pca on train
     pca = PCA(n_components=256)
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     train_dataset_fortesting = torch.utils.data.TensorDataset(torch.from_numpy(train_data_transform).float(), torch.from_numpy(train_transform).float(), torch.from_numpy(train_label_np).float())
     train_loader_fortesting = torch.utils.data.DataLoader(train_dataset_fortesting, batch_size = test_batch_size, shuffle=False, num_workers=10)
 
-    write_fpath = f"/home/ahmadf/batch/temp/sbatch.print{model_type}_{translation}"
+    write_fpath = f"/home/ahmadf/batch/sbatch.print{model_type}_{translation}"
     write_to_file("Loaded in data.", filepath=write_fpath)
 
     # initialize model on device
@@ -155,13 +155,13 @@ if __name__ == "__main__":
     device = "cpu"
 
     # Vanilla Krakencoder
-    #model = Krakencoder([256])
+    model = Krakencoder([256])
 
     # OneHidden512
     #model = Krakencoder([256], hiddenlayers=[512])
 
     # Latent512
-    model = Krakencoder([256], latentsize=512)
+    #model = Krakencoder([256], latentsize=512)
 
     # Deep
     #model = Krakencoder([256], hiddenlayers=[128, 128, 128])

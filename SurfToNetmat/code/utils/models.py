@@ -589,3 +589,94 @@ class VariationalConvTransformer(nn.Module):
         tgt = self.projection(tgt.unsqueeze(-1))
         
         return tgt.squeeze(), mu, log_var #torch.tanh(tgt.squeeze()), mu, log_var
+    
+
+class TwoHemi_SiT_nopool_linout(nn.Module):
+    def __init__(self, *,
+                        dim, 
+                        depth,
+                        heads,
+                        mlp_dim,
+                        latent_dim = 500,
+                        num_patches = 320,
+                        num_classes= 4950,
+                        num_channels = 15,
+                        num_vertices = 153,
+                        dim_head = 64,
+                        dropout = 0.3,
+                        emb_dropout = 0.1
+                        ):
+
+        super().__init__()
+
+        patch_dim = num_channels * num_vertices # flattened patch
+
+        self.relu = nn.ReLU()
+        self.gelu = nn.GELU()
+        self.elu  = nn.ELU()
+
+        # HEMI 1
+        self.hemi1_to_patch_embedding = nn.Sequential(
+            Rearrange('b c n v  -> b n (v c)'),
+            nn.Linear(patch_dim, dim),
+        ) 
+
+        self.hemi1_pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim))
+        self.dropout = nn.Dropout(emb_dropout)
+
+        self.hemi1_transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout) 
+
+        decomp_attnpatch = num_patches * dim 
+
+        self.rearrange = Rearrange('b n d  -> b (n d)') 
+
+        self.hemi1_linear = nn.Linear(decomp_attnpatch, latent_dim) # linear project from batch x 122k -> batch x latent_dim
+
+        # HEMI 2
+        self.hemi2_to_patch_embedding = nn.Sequential(
+            Rearrange('b c n v  -> b n (v c)'),
+            nn.Linear(patch_dim, dim),
+        ) 
+
+        self.hemi2_pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim))
+
+        self.hemi2_transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout) 
+
+        self.hemi2_linear = nn.Linear(decomp_attnpatch, latent_dim) # linear project from batch x 122k -> batch x latent_dim
+
+        # share hemi information and project --- !IMPORTANT! FOR "LARGE" (not "LARGER" models), output of sharehemis should be `int(num_classes/2)`
+        self.share_hemis = nn.Linear(latent_dim*2, int(num_classes))
+        self.project = nn.Linear(int(num_classes), int(num_classes))
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, hemi1, hemi2):
+
+        x = self.hemi1_to_patch_embedding(hemi1)
+        _, n, _ = x.shape 
+        x += self.hemi1_pos_embedding[:,:(n)]       
+        x = self.dropout(x)        
+        x = self.hemi1_transformer(x)
+        x = self.rearrange(x)
+        x = self.hemi1_linear(x) 
+        hemi1_latent = x#self.relu(x)
+
+        x = self.hemi2_to_patch_embedding(hemi2)
+        _, n, _ = x.shape 
+        x += self.hemi2_pos_embedding[:,:(n)]       
+        x = self.dropout(x)        
+        x = self.hemi2_transformer(x)
+        x = self.rearrange(x)
+        x = self.hemi2_linear(x) 
+        hemi2_latent = x#self.relu(x)
+        
+        x = torch.cat((hemi1_latent, hemi2_latent), dim=1)
+        x = latent = self.share_hemis(x)
+        #x = self.relu(x)
+
+        x = self.project(x)
+
+        return x, latent
