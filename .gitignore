@@ -1,12 +1,13 @@
 .DS_Store
 __pycache__
 .vscode
-/OLD_2023-2024/SurfToSurf/code/_FyzeenTests
+/_OLD_2023-2024/SurfToSurf/code/_FyzeenTests
 .ipynb_checkpoints
-/OLD_2023-2024/SurfToSurf/data
+/_OLD_2023-2024/SurfToSurf/data
 SPLINECONV_EPOCH*
 shallowSPLINECONV_EPOCH*
-/OLD_2023-2024/SurfToNetmat/LocalTransformerTests/old
+/_OLD_2023-2024/SurfToNetmat/LocalTransformerTests/old
+/_OLD_2023-2024/SurfToSurf/saved_models
 TrainOut
 model_output
 netmat_data_test
