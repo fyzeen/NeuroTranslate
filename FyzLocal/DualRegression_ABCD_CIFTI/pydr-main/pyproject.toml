@@ -1,0 +1,32 @@
+[build-system]
+requires      = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "pydr"
+dynamic         = ["version"]
+description     = "Python implementation of dual-regression for CIFTI"
+readme          = {file = "README.md", content-type="text/markdown"}
+license         = {text = "Apache License Version 2.0"}
+requires-python = ">=3.7"
+authors         = [{name = "Sean Fitzgibbon", email = "sean.fitzgibbon@ndcn.ox.ac.uk"}]
+dependencies    = [
+  "click",
+  "nibabel",
+  "numpy",
+  "pandas",
+  "pyyaml",
+  "scipy"
+]
+
+[project.scripts]
+pydr = "pydr.dr_helper:dr_helper"
+
+[project.urls]
+"Repository" = "https://git.fmrib.ox.ac.uk/fsl/pydr.git"
+
+[tool.setuptools.packages.find]
+include = ["pydr*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pydr.__version__"}

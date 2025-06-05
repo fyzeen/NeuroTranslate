@@ -1,0 +1,8 @@
+.idea
+.ipynb_checkpoints
+docs/migp*
+docs/*.gica
+*.egg-info
+tmp_data
+*.pyc
+.DS_Store
